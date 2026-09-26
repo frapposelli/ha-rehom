@@ -1,0 +1,47 @@
+# Local working files: never part of this repository.
+/docs/
+/research/
+/.playwright-mcp/
+# Raw controller captures, wherever they end up.
+captures/
+*.har
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# The aiorehom library is a separate repository (github.com/frapposelli/aiorehom).
+# CI checks it out into lib/aiorehom; locally it is a side-by-side working copy.
+/lib/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# uv / virtual environments
+.venv/
+venv/
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

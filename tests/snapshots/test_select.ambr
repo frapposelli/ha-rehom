@@ -1,0 +1,135 @@
+# serializer version: 1
+# name: test_snapshot[select.vmc_001_operating_mode-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <SelectEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'stop',
+        'dehumidify',
+        'dehumidify_cool',
+        'cool',
+        'rapid_renewal',
+        'ventilate',
+      ]),
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': <ANY>,
+    'device_class': None,
+    'device_id': <ANY>,
+    'disabled_by': None,
+    'domain': 'select',
+    'entity_category': None,
+    'entity_id': 'select.vmc_001_operating_mode',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Operating mode',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Operating mode',
+    'platform': 'rehom',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'mode',
+    'unique_id': '02:00:00:31:7a:5a_vmc_001_mode',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_snapshot[select.vmc_001_operating_mode-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'VMC 001 Operating mode',
+      <SelectEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'stop',
+        'dehumidify',
+        'dehumidify_cool',
+        'cool',
+        'rapid_renewal',
+        'ventilate',
+      ]),
+    }),
+    'context': <ANY>,
+    'entity_id': 'select.vmc_001_operating_mode',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'dehumidify',
+  })
+# ---
+# name: test_snapshot[select.vmc_002_operating_mode-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <SelectEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'stop',
+        'dehumidify',
+        'dehumidify_cool',
+        'cool',
+        'rapid_renewal',
+        'ventilate',
+      ]),
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': <ANY>,
+    'device_class': None,
+    'device_id': <ANY>,
+    'disabled_by': None,
+    'domain': 'select',
+    'entity_category': None,
+    'entity_id': 'select.vmc_002_operating_mode',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Operating mode',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Operating mode',
+    'platform': 'rehom',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'mode',
+    'unique_id': '02:00:00:31:7a:5a_vmc_002_mode',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_snapshot[select.vmc_002_operating_mode-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'VMC 002 Operating mode',
+      <SelectEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'stop',
+        'dehumidify',
+        'dehumidify_cool',
+        'cool',
+        'rapid_renewal',
+        'ventilate',
+      ]),
+    }),
+    'context': <ANY>,
+    'entity_id': 'select.vmc_002_operating_mode',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'dehumidify',
+  })
+# ---

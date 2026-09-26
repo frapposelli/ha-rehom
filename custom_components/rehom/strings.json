@@ -1,0 +1,426 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Connect to the Rehom server",
+        "description": "Enter the address of the Rehom server and the credentials you use in the Rehom app. This version only reads the plant: control from Home Assistant is disabled.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password"
+        },
+        "data_description": {
+          "host": "Host name or IP address of the Rehom server, for example rehomserver.local.",
+          "port": "HTTP port of the Rehom server. The default is 8000.",
+          "username": "User name of your account in the Rehom app (the end-user account, not the installer's).",
+          "password": "Password of your account in the Rehom app."
+        }
+      },
+      "discovery_confirm": {
+        "title": "Rehom server found",
+        "description": "A Rehom server was found at {host}. Enter the credentials you use in the Rehom app to add it.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "User name of your account in the Rehom app (the end-user account, not the installer's).",
+          "password": "Password of your account in the Rehom app."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Authenticate again",
+        "description": "The Rehom server at {host} refused the stored credentials. Enter the credentials you use in the Rehom app.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "User name of your account in the Rehom app (the end-user account, not the installer's).",
+          "password": "Password of your account in the Rehom app."
+        }
+      },
+      "reconfigure": {
+        "title": "Change the connection",
+        "description": "Change the address of the Rehom server. It must be the same controller.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "data_description": {
+          "host": "Host name or IP address of the Rehom server, for example rehomserver.local.",
+          "port": "HTTP port of the Rehom server. The default is 8000."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the Rehom server.",
+      "invalid_auth": "Invalid username or password.",
+      "invalid_host": "Invalid host name or IP address.",
+      "missing_mac": "The Rehom server did not report its MAC address, so it cannot be identified.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This Rehom server is already configured.",
+      "already_in_progress": "The configuration of this Rehom server is already in progress.",
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Reconfiguration was successful.",
+      "wrong_device": "This address answers with a different Rehom server than the one of this entry."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Rehom options",
+        "description": "Control from Home Assistant is disabled in this version: every control action is refused.",
+        "data": {
+          "temporary_comfort_duration": "Default temporary comfort duration"
+        },
+        "data_description": {
+          "temporary_comfort_duration": "Hours of comfort used by the Set temporary comfort action when no duration is given (0.5 to 24)."
+        }
+      }
+    }
+  },
+  "device": {
+    "hub": {
+      "name": "Rehom server"
+    },
+    "plant": {
+      "name": "Rehom plant"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "alarm": {
+        "name": "Alarm"
+      },
+      "alarm_antifreeze_probe": {
+        "name": "Antifreeze probe alarm"
+      },
+      "alarm_condensate_level": {
+        "name": "Condensate level alarm"
+      },
+      "alarm_defrost": {
+        "name": "Defrost alarm"
+      },
+      "alarm_dirty_filter": {
+        "name": "Dirty filter"
+      },
+      "alarm_expansion": {
+        "name": "Expansion probe alarm"
+      },
+      "alarm_fresh_air_probe": {
+        "name": "Fresh-air probe alarm"
+      },
+      "alarm_high_pressure": {
+        "name": "High-pressure alarm"
+      },
+      "alarm_recirculation_probe": {
+        "name": "Recirculation air probe alarm"
+      },
+      "bus": {
+        "name": "Bus"
+      },
+      "calling": {
+        "name": "Calling",
+        "state": {
+          "off": "Idle",
+          "on": "Calling"
+        }
+      },
+      "compressor": {
+        "name": "Compressor"
+      },
+      "defrost": {
+        "name": "Defrost"
+      },
+      "dehumidifying": {
+        "name": "Dehumidifying"
+      },
+      "demand": {
+        "name": "Demand",
+        "state": {
+          "off": "No zone calling",
+          "on": "Zones calling"
+        }
+      },
+      "free_cooling": {
+        "name": "Free cooling"
+      },
+      "heartbeat": {
+        "name": "Controller heartbeat"
+      },
+      "installer_session": {
+        "name": "Installer session",
+        "state": {
+          "off": "Closed",
+          "on": "Open"
+        }
+      },
+      "integration": {
+        "name": "Heating/cooling integration"
+      },
+      "internet": {
+        "name": "Internet access"
+      },
+      "live_updates": {
+        "name": "Live updates"
+      },
+      "probe": {
+        "name": "Probe connection"
+      },
+      "read_only": {
+        "name": "Read-only mode"
+      },
+      "schedule_active": {
+        "name": "Schedule active"
+      },
+      "setpoint_forced": {
+        "name": "Setpoint forced"
+      },
+      "setpoint_mismatch": {
+        "name": "Setpoint mismatch"
+      },
+      "watchdog": {
+        "name": "Watchdog"
+      }
+    },
+    "climate": {
+      "house": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "comfort": "Comfort",
+              "eco": "Economy",
+              "none": "None",
+              "pre_comfort": "Pre-comfort"
+            }
+          }
+        }
+      },
+      "zone": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "comfort": "Comfort",
+              "eco": "Economy",
+              "none": "None",
+              "pre_comfort": "Pre-comfort",
+              "temporary_comfort": "Temporary comfort"
+            }
+          }
+        }
+      }
+    },
+    "event": {
+      "alarm": {
+        "name": "Alarm events",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "cleared": "Cleared",
+              "raised": "Raised"
+            }
+          }
+        }
+      }
+    },
+    "number": {
+      "temperature_offset": {
+        "name": "Temperature offset"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Operating mode",
+        "state": {
+          "cool": "Cooling",
+          "dehumidify": "Dehumidification",
+          "dehumidify_cool": "Dehumidification and cooling",
+          "heat": "Heating",
+          "rapid_heat": "Rapid heating",
+          "rapid_renewal": "Rapid air renewal",
+          "standby": "Standby",
+          "stop": "Stop",
+          "ventilate": "Ventilation"
+        }
+      }
+    },
+    "sensor": {
+      "active_alarms": {
+        "name": "Active alarms"
+      },
+      "control_source": {
+        "name": "Control source",
+        "state": {
+          "crono": "Crono panel",
+          "external": "External",
+          "house": "House mode",
+          "override": "Temporary comfort",
+          "probe": "Probe",
+          "schedule": "Schedule",
+          "zone": "Zone setting"
+        }
+      },
+      "controlled_by": {
+        "name": "Controlled by",
+        "state": {
+          "crono": "Crono panel",
+          "serial_down": "Serial line down",
+          "web": "Web server"
+        }
+      },
+      "controller_setpoint": {
+        "name": "Controller setpoint"
+      },
+      "cpu_temperature": {
+        "name": "CPU temperature"
+      },
+      "duty_cycle": {
+        "name": "Duty cycle"
+      },
+      "effective_mode": {
+        "name": "Effective mode",
+        "state": {
+          "cool": "Cooling",
+          "dehumidify": "Dehumidification",
+          "dehumidify_cool": "Dehumidification and cooling",
+          "heat": "Heating",
+          "rapid_heat": "Rapid heating",
+          "rapid_renewal": "Rapid air renewal",
+          "standby": "Standby",
+          "stop": "Stop",
+          "ventilate": "Ventilation"
+        }
+      },
+      "inlet_air_temperature": {
+        "name": "Inlet air temperature"
+      },
+      "level": {
+        "name": "Active level",
+        "state": {
+          "comfort": "Comfort",
+          "economy": "Economy",
+          "off": "Off",
+          "pre_comfort": "Pre-comfort"
+        }
+      },
+      "next_change": {
+        "name": "Next change"
+      },
+      "renewal_position": {
+        "name": "Renewal damper position"
+      },
+      "season": {
+        "name": "Season",
+        "state": {
+          "summer": "Summer",
+          "winter": "Winter"
+        }
+      },
+      "temperature_comfort": {
+        "name": "Comfort temperature"
+      },
+      "temperature_economy": {
+        "name": "Economy temperature"
+      },
+      "temperature_off": {
+        "name": "Off temperature"
+      },
+      "temperature_pre_comfort": {
+        "name": "Pre-comfort temperature"
+      },
+      "temporary_comfort_end": {
+        "name": "Temporary comfort ends"
+      },
+      "vmc_state": {
+        "name": "State",
+        "state": {
+          "error": "Error",
+          "forced": "Forced",
+          "idle": "Idle",
+          "running": "Running"
+        }
+      }
+    },
+    "switch": {
+      "free_cooling": {
+        "name": "Free cooling"
+      },
+      "predictive": {
+        "name": "Predictive algorithm"
+      }
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Cannot connect to the Rehom server at {host}."
+    },
+    "control_disabled": {
+      "message": "Control from Home Assistant is disabled: this version of the Rehom integration is read-only."
+    },
+    "invalid_auth": {
+      "message": "The Rehom server refused the username or password."
+    },
+    "not_ready": {
+      "message": "The Rehom server has not been read yet."
+    },
+    "unavailable": {
+      "message": "The Rehom server is not answering."
+    },
+    "unsupported_api": {
+      "message": "The Rehom server answers in a format this integration does not understand."
+    },
+    "wrong_device": {
+      "message": "The configured address answers with a different Rehom server."
+    },
+    "zone_only": {
+      "message": "This action is only available for zone thermostats."
+    }
+  },
+  "issues": {
+    "installer_session_active": {
+      "title": "An installer session is open on the Rehom controller",
+      "description": "The controller has reported an open installer (commissioning) session for more than 15 minutes. While it is open, the plant may not regulate normally. Home Assistant never closes it: end it from the installer tools or ask your installer."
+    },
+    "season_mismatch": {
+      "title": "The Rehom season settings disagree",
+      "description": "For more than 15 minutes, the season the controller runs in has differed from the season in its installer configuration. Check the season with your installer. Home Assistant does not change the season."
+    },
+    "setpoint_mismatch": {
+      "title": "The Rehom plant regulates to a different temperature",
+      "description": "The house is in manual mode, but for more than 5 minutes the controller has regulated to {setpoint} °C instead of the selected level's {level_temperature} °C. The Rehom web app can leave this stale setpoint behind. To fix it, raise the selected level's temperature by 0.1 °C in the official Rehom app and lower it again: this rewrites the controller setpoint."
+    },
+    "unsupported_api": {
+      "title": "Unsupported Rehom server version",
+      "description": "The Rehom server (web services version {version}) answers in a format this integration does not understand, for example after a firmware update. The integration keeps the last known state. Look for an update of the Rehom integration and report the problem."
+    },
+    "unsupported_api_setup": {
+      "title": "Unsupported Rehom server version",
+      "description": "The Rehom integration could not be set up: the Rehom server answers in a format this integration does not understand, for example after a firmware update. There is no automatic retry and no entity is available. Look for an update of the Rehom integration and report the problem; after updating, reload the integration."
+    }
+  },
+  "services": {
+    "clear_temporary_comfort": {
+      "name": "Clear temporary comfort",
+      "description": "Ends the temporary comfort of a zone. Control is disabled in this version of the integration, so this action is refused."
+    },
+    "get_schedule": {
+      "name": "Get schedule",
+      "description": "Returns the weekly schedules of a zone for winter and summer: the preset bound to each weekday and its 48 half-hour levels, in controller time."
+    },
+    "set_temporary_comfort": {
+      "name": "Set temporary comfort",
+      "description": "Keeps a zone at comfort for a number of hours. Control is disabled in this version of the integration, so this action is refused.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "Hours of comfort, 0.5 to 24 in steps of 0.5. Defaults to the duration set in the integration options."
+        }
+      }
+    }
+  }
+}

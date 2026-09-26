@@ -1,0 +1,426 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Connessione al server Rehom",
+        "description": "Inserisci l'indirizzo del server Rehom e le credenziali che usi nell'app Rehom. Questa versione legge soltanto l'impianto: il controllo da Home Assistant è disabilitato.",
+        "data": {
+          "host": "Host",
+          "port": "Porta",
+          "username": "Nome utente",
+          "password": "Password"
+        },
+        "data_description": {
+          "host": "Nome host o indirizzo IP del server Rehom, per esempio rehomserver.local.",
+          "port": "Porta HTTP del server Rehom. Il valore predefinito è 8000.",
+          "username": "Nome utente del tuo account nell'app Rehom (l'account utente finale, non quello dell'installatore).",
+          "password": "Password del tuo account nell'app Rehom."
+        }
+      },
+      "discovery_confirm": {
+        "title": "Server Rehom trovato",
+        "description": "È stato trovato un server Rehom all'indirizzo {host}. Inserisci le credenziali che usi nell'app Rehom per aggiungerlo.",
+        "data": {
+          "username": "Nome utente",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "Nome utente del tuo account nell'app Rehom (l'account utente finale, non quello dell'installatore).",
+          "password": "Password del tuo account nell'app Rehom."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Autenticati di nuovo",
+        "description": "Il server Rehom all'indirizzo {host} ha rifiutato le credenziali salvate. Inserisci le credenziali che usi nell'app Rehom.",
+        "data": {
+          "username": "Nome utente",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "Nome utente del tuo account nell'app Rehom (l'account utente finale, non quello dell'installatore).",
+          "password": "Password del tuo account nell'app Rehom."
+        }
+      },
+      "reconfigure": {
+        "title": "Modifica la connessione",
+        "description": "Modifica l'indirizzo del server Rehom. Deve trattarsi dello stesso controller.",
+        "data": {
+          "host": "Host",
+          "port": "Porta"
+        },
+        "data_description": {
+          "host": "Nome host o indirizzo IP del server Rehom, per esempio rehomserver.local.",
+          "port": "Porta HTTP del server Rehom. Il valore predefinito è 8000."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossibile connettersi al server Rehom.",
+      "invalid_auth": "Nome utente o password non validi.",
+      "invalid_host": "Nome host o indirizzo IP non valido.",
+      "missing_mac": "Il server Rehom non ha comunicato il proprio indirizzo MAC, quindi non può essere identificato.",
+      "unknown": "Errore imprevisto."
+    },
+    "abort": {
+      "already_configured": "Questo server Rehom è già configurato.",
+      "already_in_progress": "La configurazione di questo server Rehom è già in corso.",
+      "reauth_successful": "Nuova autenticazione riuscita.",
+      "reconfigure_successful": "Riconfigurazione riuscita.",
+      "wrong_device": "Questo indirizzo risponde con un server Rehom diverso da quello di questa voce."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni Rehom",
+        "description": "In questa versione il controllo da Home Assistant è disabilitato: ogni azione di controllo viene rifiutata.",
+        "data": {
+          "temporary_comfort_duration": "Durata predefinita del comfort temporaneo"
+        },
+        "data_description": {
+          "temporary_comfort_duration": "Ore di comfort usate dall'azione Imposta comfort temporaneo quando non viene indicata una durata (da 0,5 a 24)."
+        }
+      }
+    }
+  },
+  "device": {
+    "hub": {
+      "name": "Server Rehom"
+    },
+    "plant": {
+      "name": "Impianto Rehom"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "alarm": {
+        "name": "Allarme"
+      },
+      "alarm_antifreeze_probe": {
+        "name": "Allarme sonda antigelo"
+      },
+      "alarm_condensate_level": {
+        "name": "Allarme livello condensa"
+      },
+      "alarm_defrost": {
+        "name": "Allarme sbrinamento"
+      },
+      "alarm_dirty_filter": {
+        "name": "Filtro sporco"
+      },
+      "alarm_expansion": {
+        "name": "Allarme sonda espansione"
+      },
+      "alarm_fresh_air_probe": {
+        "name": "Allarme sonda aria di rinnovo"
+      },
+      "alarm_high_pressure": {
+        "name": "Allarme alta pressione"
+      },
+      "alarm_recirculation_probe": {
+        "name": "Allarme sonda aria di ricircolo"
+      },
+      "bus": {
+        "name": "Bus"
+      },
+      "calling": {
+        "name": "Richiesta",
+        "state": {
+          "off": "Inattiva",
+          "on": "In richiesta"
+        }
+      },
+      "compressor": {
+        "name": "Compressore"
+      },
+      "defrost": {
+        "name": "Sbrinamento"
+      },
+      "dehumidifying": {
+        "name": "Deumidificazione"
+      },
+      "demand": {
+        "name": "Richiesta impianto",
+        "state": {
+          "off": "Nessuna zona in richiesta",
+          "on": "Zone in richiesta"
+        }
+      },
+      "free_cooling": {
+        "name": "Free cooling"
+      },
+      "heartbeat": {
+        "name": "Battito del controller"
+      },
+      "installer_session": {
+        "name": "Sessione installatore",
+        "state": {
+          "off": "Chiusa",
+          "on": "Aperta"
+        }
+      },
+      "integration": {
+        "name": "Integrazione caldo/freddo"
+      },
+      "internet": {
+        "name": "Accesso a Internet"
+      },
+      "live_updates": {
+        "name": "Aggiornamenti in tempo reale"
+      },
+      "probe": {
+        "name": "Connessione sonda"
+      },
+      "read_only": {
+        "name": "Modalità sola lettura"
+      },
+      "schedule_active": {
+        "name": "Programma attivo"
+      },
+      "setpoint_forced": {
+        "name": "Setpoint forzato"
+      },
+      "setpoint_mismatch": {
+        "name": "Setpoint non allineato"
+      },
+      "watchdog": {
+        "name": "Watchdog"
+      }
+    },
+    "climate": {
+      "house": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "comfort": "Comfort",
+              "eco": "Economy",
+              "none": "Nessuno",
+              "pre_comfort": "Pre-comfort"
+            }
+          }
+        }
+      },
+      "zone": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "comfort": "Comfort",
+              "eco": "Economy",
+              "none": "Nessuno",
+              "pre_comfort": "Pre-comfort",
+              "temporary_comfort": "Comfort temporaneo"
+            }
+          }
+        }
+      }
+    },
+    "event": {
+      "alarm": {
+        "name": "Eventi di allarme",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "cleared": "Rientrato",
+              "raised": "Attivato"
+            }
+          }
+        }
+      }
+    },
+    "number": {
+      "temperature_offset": {
+        "name": "Correzione temperatura"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Modalità di funzionamento",
+        "state": {
+          "cool": "Raffrescamento",
+          "dehumidify": "Deumidificazione",
+          "dehumidify_cool": "Deumidificazione e raffrescamento",
+          "heat": "Riscaldamento",
+          "rapid_heat": "Riscaldamento rapido",
+          "rapid_renewal": "Rinnovo aria rapido",
+          "standby": "Standby",
+          "stop": "Stop",
+          "ventilate": "Ventilazione"
+        }
+      }
+    },
+    "sensor": {
+      "active_alarms": {
+        "name": "Allarmi attivi"
+      },
+      "control_source": {
+        "name": "Origine del controllo",
+        "state": {
+          "crono": "Cronotermostato",
+          "external": "Esterna",
+          "house": "Modalità casa",
+          "override": "Comfort temporaneo",
+          "probe": "Sonda",
+          "schedule": "Programma",
+          "zone": "Impostazione zona"
+        }
+      },
+      "controlled_by": {
+        "name": "Controllato da",
+        "state": {
+          "crono": "Cronotermostato",
+          "serial_down": "Linea seriale interrotta",
+          "web": "Server web"
+        }
+      },
+      "controller_setpoint": {
+        "name": "Setpoint del controller"
+      },
+      "cpu_temperature": {
+        "name": "Temperatura CPU"
+      },
+      "duty_cycle": {
+        "name": "Ciclo di lavoro"
+      },
+      "effective_mode": {
+        "name": "Modalità effettiva",
+        "state": {
+          "cool": "Raffrescamento",
+          "dehumidify": "Deumidificazione",
+          "dehumidify_cool": "Deumidificazione e raffrescamento",
+          "heat": "Riscaldamento",
+          "rapid_heat": "Riscaldamento rapido",
+          "rapid_renewal": "Rinnovo aria rapido",
+          "standby": "Standby",
+          "stop": "Stop",
+          "ventilate": "Ventilazione"
+        }
+      },
+      "inlet_air_temperature": {
+        "name": "Temperatura aria in ingresso"
+      },
+      "level": {
+        "name": "Livello attivo",
+        "state": {
+          "comfort": "Comfort",
+          "economy": "Economy",
+          "off": "Spento",
+          "pre_comfort": "Pre-comfort"
+        }
+      },
+      "next_change": {
+        "name": "Prossimo cambio"
+      },
+      "renewal_position": {
+        "name": "Posizione serranda di rinnovo"
+      },
+      "season": {
+        "name": "Stagione",
+        "state": {
+          "summer": "Estate",
+          "winter": "Inverno"
+        }
+      },
+      "temperature_comfort": {
+        "name": "Temperatura comfort"
+      },
+      "temperature_economy": {
+        "name": "Temperatura economy"
+      },
+      "temperature_off": {
+        "name": "Temperatura spento"
+      },
+      "temperature_pre_comfort": {
+        "name": "Temperatura pre-comfort"
+      },
+      "temporary_comfort_end": {
+        "name": "Fine comfort temporaneo"
+      },
+      "vmc_state": {
+        "name": "Stato",
+        "state": {
+          "error": "Errore",
+          "forced": "Forzato",
+          "idle": "Inattivo",
+          "running": "In funzione"
+        }
+      }
+    },
+    "switch": {
+      "free_cooling": {
+        "name": "Free cooling"
+      },
+      "predictive": {
+        "name": "Algoritmo predittivo"
+      }
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Impossibile connettersi al server Rehom all'indirizzo {host}."
+    },
+    "control_disabled": {
+      "message": "Il controllo da Home Assistant è disabilitato: questa versione dell'integrazione Rehom è in sola lettura."
+    },
+    "invalid_auth": {
+      "message": "Il server Rehom ha rifiutato il nome utente o la password."
+    },
+    "not_ready": {
+      "message": "Il server Rehom non è ancora stato letto."
+    },
+    "unavailable": {
+      "message": "Il server Rehom non risponde."
+    },
+    "unsupported_api": {
+      "message": "Il server Rehom risponde in un formato che questa integrazione non riconosce."
+    },
+    "wrong_device": {
+      "message": "L'indirizzo configurato risponde con un server Rehom diverso."
+    },
+    "zone_only": {
+      "message": "Questa azione è disponibile solo per i termostati di zona."
+    }
+  },
+  "issues": {
+    "installer_session_active": {
+      "title": "Sessione installatore aperta sul controller Rehom",
+      "description": "Da più di 15 minuti il controller segnala una sessione installatore (messa in servizio) aperta. Finché resta aperta, l'impianto potrebbe non regolare normalmente. Home Assistant non la chiude mai: chiudila dagli strumenti dell'installatore o rivolgiti al tuo installatore."
+    },
+    "season_mismatch": {
+      "title": "Le impostazioni di stagione Rehom non coincidono",
+      "description": "Da più di 15 minuti la stagione in cui funziona il controller è diversa da quella della configurazione dell'installatore. Verifica la stagione con il tuo installatore. Home Assistant non modifica la stagione."
+    },
+    "setpoint_mismatch": {
+      "title": "L'impianto Rehom regola a una temperatura diversa",
+      "description": "La casa è in modalità manuale, ma da più di 5 minuti il controller regola a {setpoint} °C invece dei {level_temperature} °C del livello selezionato. L'app web Rehom può lasciare questo setpoint non aggiornato. Per correggerlo, nell'app ufficiale Rehom alza di 0,1 °C la temperatura del livello selezionato e poi riabbassala: così il setpoint del controller viene riscritto."
+    },
+    "unsupported_api": {
+      "title": "Versione del server Rehom non supportata",
+      "description": "Il server Rehom (versione dei servizi web {version}) risponde in un formato che questa integrazione non riconosce, per esempio dopo un aggiornamento del firmware. L'integrazione mantiene l'ultimo stato noto. Cerca un aggiornamento dell'integrazione Rehom e segnala il problema."
+    },
+    "unsupported_api_setup": {
+      "title": "Versione del server Rehom non supportata",
+      "description": "Non è stato possibile configurare l'integrazione Rehom: il server Rehom risponde in un formato che questa integrazione non riconosce, per esempio dopo un aggiornamento del firmware. Non ci sono nuovi tentativi automatici e nessuna entità è disponibile. Cerca un aggiornamento dell'integrazione Rehom e segnala il problema; dopo l'aggiornamento, ricarica l'integrazione."
+    }
+  },
+  "services": {
+    "clear_temporary_comfort": {
+      "name": "Annulla comfort temporaneo",
+      "description": "Termina il comfort temporaneo di una zona. In questa versione dell'integrazione il controllo è disabilitato, quindi questa azione viene rifiutata."
+    },
+    "get_schedule": {
+      "name": "Leggi programma",
+      "description": "Restituisce i programmi settimanali di una zona per l'inverno e l'estate: il preset associato a ogni giorno della settimana e i suoi 48 livelli di mezz'ora, nell'ora del controller."
+    },
+    "set_temporary_comfort": {
+      "name": "Imposta comfort temporaneo",
+      "description": "Mantiene una zona in comfort per un certo numero di ore. In questa versione dell'integrazione il controllo è disabilitato, quindi questa azione viene rifiutata.",
+      "fields": {
+        "duration": {
+          "name": "Durata",
+          "description": "Ore di comfort, da 0,5 a 24 a passi di 0,5. Se omessa, si usa la durata impostata nelle opzioni dell'integrazione."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+# Home Assistant's own validator for custom_components/rehom: manifest,
+# translations (strings.json, translations/*.json), icons.json, services.yaml.
+name: Validate with hassfest
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Run hassfest
+        # home-assistant/actions publishes no current release tag: pinned to a
+        # commit of master.  Update it with Home Assistant releases.
+        uses: home-assistant/actions/hassfest@58bff37c8947f690ace498be413a9b78d6f30f93 # master, 2026-09-26

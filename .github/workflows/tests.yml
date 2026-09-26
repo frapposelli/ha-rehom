@@ -1,0 +1,102 @@
+# Lint, type-check and test the integration.
+#
+# Everything runs offline: the tests replay a sanitised recording through a
+# real aiorehom client (tests/harness.py), and pytest-socket blocks sockets.
+#
+# aiorehom is a separate repository.  pyproject.toml takes it from the path
+# source lib/aiorehom (editable), so CI checks it out there before `uv sync`.
+# The recording the tests replay ships with that repository
+# (lib/aiorehom/tests/fixtures/).
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The aiorehom release that custom_components/rehom/manifest.json requires
+  # (aiorehom==0.2.0).  Change both together.
+  AIOREHOM_REF: v0.2.0
+
+jobs:
+  lint:
+    name: Ruff and mypy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out ha-rehom
+        uses: actions/checkout@v5
+
+      - name: Check out aiorehom into lib/aiorehom
+        uses: actions/checkout@v5
+        with:
+          repository: frapposelli/aiorehom
+          ref: ${{ env.AIOREHOM_REF }}
+          path: lib/aiorehom
+
+      - name: Set up uv and Python 3.14
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install the dev dependencies
+        run: uv sync --locked
+
+      - name: Ruff lint
+        run: uv run ruff check custom_components tests
+
+      - name: Ruff format
+        run: uv run ruff format --check custom_components tests
+
+      - name: mypy (strict)
+        run: uv run mypy
+
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out ha-rehom
+        uses: actions/checkout@v5
+
+      - name: Check out aiorehom into lib/aiorehom
+        uses: actions/checkout@v5
+        with:
+          repository: frapposelli/aiorehom
+          ref: ${{ env.AIOREHOM_REF }}
+          path: lib/aiorehom
+
+      - name: Set up uv and Python 3.14
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install the dev dependencies
+        run: uv sync --locked
+
+      - name: pytest with coverage (fails under 95 %)
+        run: uv run pytest --cov --cov-report=term-missing --cov-report=xml
+
+      - name: config_flow.py fully covered
+        run: >-
+          uv run coverage report
+          --include='*/custom_components/rehom/config_flow.py'
+          --fail-under=100
+
+      - name: Upload the coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: ignore

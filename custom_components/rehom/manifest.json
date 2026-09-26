@@ -1,0 +1,31 @@
+{
+  "domain": "rehom",
+  "name": "Rehom",
+  "codeowners": [
+    "@frapposelli"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "dhcp": [
+    {
+      "hostname": "rehomserver*"
+    }
+  ],
+  "documentation": "https://github.com/frapposelli/ha-rehom",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/frapposelli/ha-rehom/issues",
+  "loggers": [
+    "aiorehom"
+  ],
+  "requirements": [
+    "aiorehom==0.2.0"
+  ],
+  "version": "0.1.0",
+  "zeroconf": [
+    {
+      "type": "_http._tcp.local.",
+      "name": "rehom*"
+    }
+  ]
+}

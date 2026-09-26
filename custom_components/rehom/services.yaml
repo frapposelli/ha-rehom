@@ -1,0 +1,28 @@
+get_schedule:
+  target:
+    entity:
+      integration: rehom
+      domain: climate
+
+set_temporary_comfort:
+  target:
+    entity:
+      integration: rehom
+      domain: climate
+  fields:
+    duration:
+      required: false
+      example: 2
+      selector:
+        number:
+          min: 0.5
+          max: 24
+          step: 0.5
+          unit_of_measurement: h
+          mode: box
+
+clear_temporary_comfort:
+  target:
+    entity:
+      integration: rehom
+      domain: climate

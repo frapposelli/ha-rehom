@@ -1,0 +1,75 @@
+# Integration quality scale, tracked as good practice (this is a HACS
+# integration, not part of Home Assistant core).  Target for the first
+# release: Silver.
+rules:
+  # Bronze
+  action-setup: done  # async_setup -> services.async_setup_services
+  appropriate-polling:
+    status: exempt
+    comment: local_push; the library polls /api/alive/ (30 s) and resyncs every 10 min itself.
+  brands: done  # brand/ (original icons and logos, light and dark)
+  common-modules: done  # coordinator.py, entity.py
+  config-flow-test-coverage: done  # tests/test_config_flow.py, 100 % of config_flow.py
+  config-flow: done
+  dependency-transparency: todo  # aiorehom must be published on PyPI before the HACS release
+  docs-actions: done  # README: Actions
+  docs-high-level-description: done  # README
+  docs-installation-instructions: done  # README: Installation (HACS custom repository)
+  docs-removal-instructions: done  # README: Removal
+  entity-event-setup: done  # CoordinatorEntity + async_on_remove
+  entity-unique-id: done  # {mac}_{kind}[_{unit}]_{key}
+  has-entity-name: done
+  runtime-data: done  # RehomConfigEntry = ConfigEntry[RehomRuntimeData]
+  test-before-configure: done  # api.async_probe (full connect) in every flow step
+  test-before-setup: done  # ConfigEntryNotReady / AuthFailed / Error from connect()
+  unique-config-entry: done  # unique_id = format_mac(WEBSERVER.MacAddress)
+
+  # Silver
+  action-exceptions: done  # ServiceValidationError(control_disabled / zone_only)
+  config-entry-unloading: done
+  docs-configuration-parameters: done  # README: Options
+  docs-installation-parameters: done  # README: Configuration
+  entity-unavailable: done  # availability rules 1-5
+  integration-owner: done  # codeowners in manifest.json
+  log-when-unavailable: done  # RehomCoordinator logs once down / once up
+  parallel-updates: done  # 0 on sensor/binary_sensor/event, 1 on control platforms
+  reauthentication-flow: done
+  test-coverage: done  # >= 95 % (pyproject fail_under)
+
+  # Gold
+  devices: done
+  diagnostics: done  # diagnostics.py; redacted, no raw record dump
+  discovery-update-info: done  # dhcp and confirmed zeroconf/dhcp update an IP host; names kept
+  discovery: done  # zeroconf rehom._http._tcp (ignorable: mDNS-name unique id) + dhcp
+  docs-data-update: done  # README: How data is updated
+  docs-examples: todo  # automation examples (README has only the action example)
+  docs-known-limitations: done  # README: Known limitations
+  docs-supported-devices: done  # README: Requirements, Entities
+  docs-supported-functions: done  # README: Entities, Actions
+  docs-troubleshooting: done  # README: Troubleshooting
+  docs-use-cases: todo
+  dynamic-devices: done  # entity.async_setup_dynamic_entities
+  entity-category: done  # diagnostic/config (platform snapshots)
+  entity-device-class: done  # incl. the zone offset number: temperature_delta
+  entity-disabled-by-default: done  # diagnostics-only values (tests/test_init.py)
+  entity-translations: done  # en + it
+  exception-translations: done
+  icon-translations: done
+  reconfiguration-flow: done
+  repair-issues: done  # 4 non-fixable issues (issues.py)
+  stale-devices:
+    status: todo
+    comment: >-
+      This version only allows manual removal of absent units
+      (async_remove_config_entry_device); automatic removal after 24 h of
+      absence is planned.
+
+  # Platinum
+  async-dependency: done
+  inject-websession:
+    status: done
+    comment: >-
+      REST uses HA's shared session; aiorehom's private WebSocket session (own cookie jar,
+      timeouts and request guard) runs on that session's connector, so both use HA's
+      resolver (mDNS for rehomserver.local).
+  strict-typing: done  # mypy --strict on custom_components/rehom; aiorehom ships py.typed

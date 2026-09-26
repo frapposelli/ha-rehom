@@ -1,0 +1,31 @@
+# HACS repository validation (hacs.json, manifest, brand images, README and
+# the repository's GitHub settings).
+#
+# The action inspects the repository on GitHub, so it passes only once the
+# repository is public and has a description and topics.  If only its brands
+# check fails although custom_components/rehom/brand/ is present, add
+# `ignore: brands` to the action's inputs.
+name: HACS validation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run the HACS action
+        # hacs/action publishes no current release tag: pinned to a commit of main.
+        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main, 2026-09-26
+        with:
+          category: integration

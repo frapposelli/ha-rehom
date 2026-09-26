@@ -1,0 +1,221 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "calling": {
+        "default": "mdi:radiator-off",
+        "state": {
+          "on": "mdi:radiator"
+        }
+      },
+      "compressor": {
+        "default": "mdi:heat-pump-outline",
+        "state": {
+          "on": "mdi:heat-pump"
+        }
+      },
+      "defrost": {
+        "default": "mdi:snowflake-melt"
+      },
+      "dehumidifying": {
+        "default": "mdi:water-off-outline",
+        "state": {
+          "on": "mdi:water-percent"
+        }
+      },
+      "demand": {
+        "default": "mdi:home-thermometer-outline",
+        "state": {
+          "on": "mdi:home-thermometer"
+        }
+      },
+      "free_cooling": {
+        "default": "mdi:snowflake-off",
+        "state": {
+          "on": "mdi:snowflake"
+        }
+      },
+      "heartbeat": {
+        "default": "mdi:heart-off-outline",
+        "state": {
+          "on": "mdi:heart-pulse"
+        }
+      },
+      "installer_session": {
+        "default": "mdi:account-hard-hat-outline",
+        "state": {
+          "on": "mdi:account-hard-hat"
+        }
+      },
+      "integration": {
+        "default": "mdi:thermometer-off",
+        "state": {
+          "on": "mdi:thermometer-auto"
+        }
+      },
+      "live_updates": {
+        "default": "mdi:lan-disconnect",
+        "state": {
+          "on": "mdi:lan-connect"
+        }
+      },
+      "read_only": {
+        "default": "mdi:lock-open-variant-outline",
+        "state": {
+          "on": "mdi:lock"
+        }
+      },
+      "schedule_active": {
+        "default": "mdi:calendar-remove",
+        "state": {
+          "on": "mdi:calendar-clock"
+        }
+      },
+      "setpoint_forced": {
+        "default": "mdi:thermometer",
+        "state": {
+          "on": "mdi:thermometer-alert"
+        }
+      }
+    },
+    "climate": {
+      "house": {
+        "default": "mdi:home-thermometer",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "comfort": "mdi:sofa",
+              "eco": "mdi:leaf",
+              "none": "mdi:calendar-clock",
+              "pre_comfort": "mdi:sofa-outline"
+            }
+          }
+        }
+      },
+      "zone": {
+        "default": "mdi:thermostat",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "comfort": "mdi:sofa",
+              "eco": "mdi:leaf",
+              "none": "mdi:calendar-clock",
+              "pre_comfort": "mdi:sofa-outline",
+              "temporary_comfort": "mdi:timer-sand"
+            }
+          }
+        }
+      }
+    },
+    "event": {
+      "alarm": {
+        "default": "mdi:alarm-light"
+      }
+    },
+    "fan": {
+      "ventilation": {
+        "default": "mdi:hvac"
+      }
+    },
+    "number": {
+      "temperature_offset": {
+        "default": "mdi:thermometer-plus"
+      }
+    },
+    "select": {
+      "mode": {
+        "default": "mdi:hvac",
+        "state": {
+          "cool": "mdi:snowflake",
+          "dehumidify": "mdi:water-percent",
+          "dehumidify_cool": "mdi:snowflake-thermometer",
+          "heat": "mdi:fire",
+          "rapid_heat": "mdi:fire-circle",
+          "rapid_renewal": "mdi:weather-windy",
+          "standby": "mdi:power-standby",
+          "stop": "mdi:stop",
+          "ventilate": "mdi:fan"
+        }
+      }
+    },
+    "sensor": {
+      "active_alarms": {
+        "default": "mdi:alarm-light-outline"
+      },
+      "control_source": {
+        "default": "mdi:source-branch"
+      },
+      "controlled_by": {
+        "default": "mdi:server",
+        "state": {
+          "crono": "mdi:timer-cog-outline",
+          "serial_down": "mdi:lan-disconnect",
+          "web": "mdi:web"
+        }
+      },
+      "controller_setpoint": {
+        "default": "mdi:thermometer-check"
+      },
+      "duty_cycle": {
+        "default": "mdi:percent-circle"
+      },
+      "effective_mode": {
+        "default": "mdi:hvac",
+        "state": {
+          "cool": "mdi:snowflake",
+          "dehumidify": "mdi:water-percent",
+          "dehumidify_cool": "mdi:snowflake-thermometer",
+          "heat": "mdi:fire",
+          "rapid_heat": "mdi:fire-circle",
+          "rapid_renewal": "mdi:weather-windy",
+          "standby": "mdi:power-standby",
+          "stop": "mdi:stop",
+          "ventilate": "mdi:fan"
+        }
+      },
+      "level": {
+        "default": "mdi:thermometer-lines"
+      },
+      "next_change": {
+        "default": "mdi:clock-outline"
+      },
+      "renewal_position": {
+        "default": "mdi:valve"
+      },
+      "season": {
+        "default": "mdi:calendar",
+        "state": {
+          "summer": "mdi:white-balance-sunny",
+          "winter": "mdi:snowflake"
+        }
+      },
+      "temporary_comfort_end": {
+        "default": "mdi:timer-sand"
+      },
+      "vmc_state": {
+        "default": "mdi:state-machine"
+      }
+    },
+    "switch": {
+      "free_cooling": {
+        "default": "mdi:snowflake-off",
+        "state": {
+          "on": "mdi:snowflake"
+        }
+      },
+      "predictive": {
+        "default": "mdi:brain"
+      }
+    }
+  },
+  "services": {
+    "clear_temporary_comfort": {
+      "service": "mdi:timer-off-outline"
+    },
+    "get_schedule": {
+      "service": "mdi:calendar-clock"
+    },
+    "set_temporary_comfort": {
+      "service": "mdi:timer-sand"
+    }
+  }
+}

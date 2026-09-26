@@ -1,0 +1,82 @@
+# Dev tooling for the Home Assistant integration (custom_components/rehom).
+# This is NOT a distributable package: the integration ships via HACS from
+# custom_components/rehom.  The aiorehom library is a separate repository
+# (https://github.com/frapposelli/aiorehom), checked out into lib/aiorehom.
+[project]
+name = "ha-rehom"
+version = "0.1.0"
+description = "Dev environment for the Rehom Home Assistant custom integration"
+requires-python = ">=3.14.2"  # homeassistant 2026.9.x needs >=3.14.2
+dependencies = []
+
+[dependency-groups]
+dev = [
+    # Pinned together: PHACC 0.13.366 pins homeassistant==2026.9.3 (and bundles
+    # syrupy 6.0.0, pytest 9.0.3, pytest-asyncio 1.4.0, pytest-freezer, pytest-socket).
+    "homeassistant==2026.9.3",
+    "pytest-homeassistant-custom-component==0.13.366",
+    "pytest-cov",
+    "mypy",
+    "ruff",
+    # The library, from the checkout in lib/aiorehom (editable; CI checks it
+    # out there).  The manifest pins the PyPI release instead
+    # (custom_components/rehom/manifest.json).
+    "aiorehom",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev"]
+
+[tool.uv.sources]
+aiorehom = { path = "lib/aiorehom", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# PHACC disables sockets (pytest-socket); keep it that way: every test is offline.
+addopts = "--strict-markers"
+
+[tool.coverage.run]
+source = ["custom_components.rehom"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+files = ["custom_components/rehom"]
+mypy_path = "."
+explicit_package_bases = true
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = [".", "tests"]
+extend-exclude = ["lib"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC", "S", "PT", "C4", "RET", "PL",
+]
+ignore = ["PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "PLR2004", "PLC0415", "SLF001"]
+
+[tool.ruff.lint.isort]
+# Home Assistant core style
+known-first-party = ["custom_components"]
+force-sort-within-sections = true
+combine-as-imports = true
