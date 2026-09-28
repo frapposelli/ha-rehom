@@ -18,7 +18,8 @@ from .harness import RehomHarness, T, termo_update
 from .platform_helpers import get_entity, get_state, is_available
 
 SELECT = "select.vmc_001_operating_mode"
-FIXTURE_OPTIONS = ["stop", "dehumidify", "dehumidify_cool", "cool", "rapid_renewal", "ventilate"]
+#: The fixture's selectable modes without rapid_renewal (a timed cycle, never offered).
+FIXTURE_OPTIONS = ["stop", "dehumidify", "dehumidify_cool", "cool", "ventilate"]
 
 
 def _frames(*frames: tuple[str, str, str]) -> dict[str, Any]:
@@ -44,7 +45,7 @@ async def test_snapshot(
 
 
 async def test_values(hass: HomeAssistant, init_integration: MockConfigEntry) -> None:
-    """Selectable modes in enum order; current mode dehumidify."""
+    """Selectable modes in enum order, without the rapid ones; current mode dehumidify."""
     for entity_id in (SELECT, "select.vmc_002_operating_mode"):
         state = get_state(hass, entity_id)
         assert state.state == "dehumidify"
@@ -74,7 +75,6 @@ async def test_current_mode_not_selectable(
         "dehumidify_cool",
         "cool",
         "heat",
-        "rapid_renewal",
         "ventilate",
     ]
     await harness.advance_to(T("10:23:15"))
@@ -86,3 +86,44 @@ async def test_current_mode_not_selectable(
     assert isinstance(absent, RehomVmcModeSelect)
     assert absent.options == []
     assert absent.current_option is None
+
+
+@pytest.mark.parametrize(
+    "device_patch",
+    [
+        _frames(
+            ("10:23:00", "DEUM.001..ST_MODE", "6"),
+            ("10:23:00", "DEUM.002..ST_MODE", "7"),
+            ("10:23:10", "DEUM.001..ST_MODE", "1"),
+        )
+    ],
+)
+async def test_rapid_mode_listed_only_while_current(
+    hass: HomeAssistant, harness: RehomHarness, init_integration: MockConfigEntry
+) -> None:
+    """A running rapid cycle is shown (selectable or not), and dropped once it ends."""
+    await harness.advance_to(T("10:23:05"))
+    state = get_state(hass, SELECT)
+    assert state.state == "rapid_renewal"
+    assert state.attributes[ATTR_OPTIONS] == [
+        "stop",
+        "dehumidify",
+        "dehumidify_cool",
+        "cool",
+        "rapid_renewal",
+        "ventilate",
+    ]
+    state = get_state(hass, "select.vmc_002_operating_mode")
+    assert state.state == "rapid_heat"
+    assert state.attributes[ATTR_OPTIONS] == [
+        "stop",
+        "dehumidify",
+        "dehumidify_cool",
+        "cool",
+        "rapid_heat",
+        "ventilate",
+    ]
+    await harness.advance_to(T("10:23:15"))
+    state = get_state(hass, SELECT)
+    assert state.state == "dehumidify"
+    assert state.attributes[ATTR_OPTIONS] == FIXTURE_OPTIONS

@@ -19,9 +19,9 @@
     "aiorehom"
   ],
   "requirements": [
-    "aiorehom==0.2.0"
+    "aiorehom==0.3.0"
   ],
-  "version": "0.1.0",
+  "version": "0.2.0b1",
   "zeroconf": [
     {
       "type": "_http._tcp.local.",

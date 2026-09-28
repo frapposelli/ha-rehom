@@ -24,7 +24,9 @@ import voluptuous as vol
 
 from . import api
 from .const import (
+    CONF_ENABLE_CONTROL,
     CONF_TEMPORARY_COMFORT_DURATION,
+    DEFAULT_ENABLE_CONTROL,
     DEFAULT_HOST,
     DEFAULT_PORT,
     DEFAULT_TEMPORARY_COMFORT_DURATION,
@@ -98,7 +100,7 @@ class RehomConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> RehomOptionsFlow:
-        """Options: the default temporary-comfort duration only."""
+        """Options: "Enable control" and the default temporary-comfort duration."""
         return RehomOptionsFlow()
 
     def is_matching(self, other_flow: Self) -> bool:
@@ -270,19 +272,27 @@ class RehomConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class RehomOptionsFlow(OptionsFlowWithReload):
-    """Options: default temporary-comfort duration.  No 'enable control' yet."""
+    """Options: "Enable control" (off by default) and the temporary-comfort duration.
+
+    Saving reloads the entry (``OptionsFlowWithReload``), so a changed
+    "Enable control" rebuilds the client with or without writes.
+    """
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Single form."""
         if user_input is not None:
             return self.async_create_entry(data=user_input)
-        current = self.config_entry.options.get(
-            CONF_TEMPORARY_COMFORT_DURATION, DEFAULT_TEMPORARY_COMFORT_DURATION
-        )
+        options = self.config_entry.options
+        # Only an exact True shows as on, as only an exact True enables control.
+        enable_control = options.get(CONF_ENABLE_CONTROL, DEFAULT_ENABLE_CONTROL) is True
+        duration = options.get(CONF_TEMPORARY_COMFORT_DURATION, DEFAULT_TEMPORARY_COMFORT_DURATION)
         schema = vol.Schema(
             {
                 vol.Required(
-                    CONF_TEMPORARY_COMFORT_DURATION, default=current
+                    CONF_ENABLE_CONTROL, default=enable_control
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_TEMPORARY_COMFORT_DURATION, default=duration
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
                         min=MIN_TEMPORARY_COMFORT_DURATION,
@@ -291,7 +301,7 @@ class RehomOptionsFlow(OptionsFlowWithReload):
                         unit_of_measurement="h",
                         mode=selector.NumberSelectorMode.BOX,
                     )
-                )
+                ),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

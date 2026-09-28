@@ -12,7 +12,7 @@ rules:
   config-flow-test-coverage: done  # tests/test_config_flow.py, 100 % of config_flow.py
   config-flow: done
   dependency-transparency: todo  # aiorehom must be published on PyPI before the HACS release
-  docs-actions: done  # README: Actions
+  docs-actions: done  # README: Actions, Control
   docs-high-level-description: done  # README
   docs-installation-instructions: done  # README: Installation (HACS custom repository)
   docs-removal-instructions: done  # README: Removal
@@ -25,9 +25,22 @@ rules:
   unique-config-entry: done  # unique_id = format_mac(WEBSERVER.MacAddress)
 
   # Silver
-  action-exceptions: done  # ServiceValidationError(control_disabled / zone_only)
+  action-exceptions:
+    status: done
+    comment: >-
+      ServiceValidationError for a refusal caused by the request or by the
+      plant's settings: control_disabled, not_verified, not_supported,
+      temporary_comfort_unavailable, zone_only, invalid_value,
+      target_out_of_range, the library's refusals such as house_not_auto,
+      crono_mode or read_only, and write_refused with a library reason.
+      HomeAssistantError for a device or communication failure: the device
+      refusals bus_down, zone_offline, vmc_offline and vmc_busy
+      (const.DEVICE_REFUSALS), unavailable, not_ready, invalid_auth,
+      write_refused (forbidden_request), write_not_confirmed and write_failed.
+      Control errors are mapped in control.py; rehom.get_schedule raises
+      zone_only and not_ready itself, by the same rule. All translated.
   config-entry-unloading: done
-  docs-configuration-parameters: done  # README: Options
+  docs-configuration-parameters: done  # README: Options (Enable control, comfort duration)
   docs-installation-parameters: done  # README: Configuration
   entity-unavailable: done  # availability rules 1-5
   integration-owner: done  # codeowners in manifest.json
@@ -45,7 +58,7 @@ rules:
   docs-examples: todo  # automation examples (README has only the action example)
   docs-known-limitations: done  # README: Known limitations
   docs-supported-devices: done  # README: Requirements, Entities
-  docs-supported-functions: done  # README: Entities, Actions
+  docs-supported-functions: done  # README: Entities, Control, Actions
   docs-troubleshooting: done  # README: Troubleshooting
   docs-use-cases: todo
   dynamic-devices: done  # entity.async_setup_dynamic_entities
@@ -56,7 +69,7 @@ rules:
   exception-translations: done
   icon-translations: done
   reconfiguration-flow: done
-  repair-issues: done  # 4 non-fixable issues (issues.py)
+  repair-issues: done  # setpoint_mismatch fixable with control on (repairs.py); 3 not fixable
   stale-devices:
     status: todo
     comment: >-

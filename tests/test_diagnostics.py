@@ -12,6 +12,7 @@ from syrupy.assertion import SnapshotAssertion
 
 from custom_components.rehom.diagnostics import async_get_config_entry_diagnostics
 
+from .conftest import CONTROL_OPTIONS
 from .harness import FIXTURE_MAC, RehomHarness, T
 
 
@@ -55,6 +56,20 @@ async def test_diagnostics(
     assert result["state"]["hub"]["mac"] == REDACTED
     assert {zone["name"] for zone in result["state"]["zones"].values()} == {REDACTED}
     assert {vmc["name"] for vmc in result["state"]["vmcs"].values()} == {REDACTED}
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+async def test_diagnostics_show_control_enabled(
+    hass: HomeAssistant, init_integration: MockConfigEntry, harness: RehomHarness
+) -> None:
+    """With "Enable control" on, the options say so (checked before the first control)."""
+    result = await async_get_config_entry_diagnostics(hass, init_integration)
+    assert result["entry"]["options"] == {
+        "enable_control": True,
+        "temporary_comfort_duration": 2.0,
+    }
+    assert harness.allow_writes == [True]
+    assert harness.writes == []  # reading diagnostics sends nothing
 
 
 async def test_diagnostics_before_heartbeat(

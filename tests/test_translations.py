@@ -24,7 +24,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.rehom import const
 from custom_components.rehom.const import PLATFORMS
 
-COMPONENT = Path(__file__).resolve().parents[1] / "custom_components" / "rehom"
+ROOT = Path(__file__).resolve().parents[1]
+COMPONENT = ROOT / "custom_components" / "rehom"
 PLACEHOLDER = re.compile(r"\{(\w+)\}")
 #: Main-feature entities: the name is the device name (``_attr_name = None``).
 NAME_NONE_KEYS = {("climate", "house"), ("climate", "zone"), ("fan", "ventilation")}
@@ -34,6 +35,46 @@ HELPER_ABORT_REASONS = {
     "already_in_progress",  # async_set_unique_id(raise_on_progress=True)
     "reauth_successful",  # async_update_reload_and_abort (reauth)
     "reconfigure_successful",  # async_update_reload_and_abort (reconfigure)
+}
+#: Issue texts with a fix flow (repairs.py) instead of a description; every other issue
+#: has a title and a description (Home Assistant's schema allows one or the other).
+FIXABLE_ISSUES = {const.ISSUE_SETPOINT_MISMATCH_FIXABLE}
+#: Exception messages with placeholders, and the placeholders the code passes.
+EXCEPTION_PLACEHOLDERS = {
+    const.EXC_CANNOT_CONNECT: {"host"},
+    const.EXC_WRITE_REFUSED: {"reason"},  # a library reason code, or forbidden_request
+    const.EXC_TARGET_OUT_OF_RANGE: {"min", "max"},  # the zone's base ±3 °C
+}
+#: Error messages the README quotes (exception key -> the quoted words).
+README_QUOTES = {
+    const.EXC_CONTROL_DISABLED: "Control from Home Assistant is off",
+    const.EXC_NOT_VERIFIED: "Home Assistant does not send this setting yet",
+    const.EXC_NOT_SUPPORTED: "Home Assistant cannot do this on the Rehom controller",
+    const.EXC_TEMPORARY_COMFORT_UNAVAILABLE: (
+        "Temporary comfort is not available from Home Assistant yet"
+    ),
+    const.EXC_WRITE_NOT_CONFIRMED: "the controller did not confirm it",
+    const.EXC_WRITE_FAILED: "It may or may not have been applied",
+    const.EXC_ZONE_ONLY: "This action is only available for zone thermostats",
+}
+#: Words each language uses in the control texts (see test_control_texts).
+CONTROL_WORDS = {
+    "en": {
+        "backup": "backup",
+        "not_available": "not available",
+        "refused": "refused",
+        "nothing_sent": "nothing was sent",
+        "may_have_been_applied": "may have been applied",
+        "did_not_confirm": "did not confirm",
+    },
+    "it": {
+        "backup": "backup",
+        "not_available": "ancora disponibile",
+        "refused": "rifiutata",
+        "nothing_sent": "non è stato inviato nulla",
+        "may_have_been_applied": "potrebbe essere stato applicato",
+        "did_not_confirm": "non l'ha confermato",
+    },
 }
 
 
@@ -133,8 +174,26 @@ def test_exceptions_and_issues_exist() -> None:
     """Every EXC_* and ISSUE_* constant is translated, and nothing else is."""
     assert set(STRINGS["exceptions"]) == _constants("EXC_")
     assert set(STRINGS["issues"]) == _constants("ISSUE_")
-    for issue in STRINGS["issues"].values():
-        assert set(issue) == {"title", "description"}
+    for key, issue in STRINGS["issues"].items():
+        # setpoint_mismatch has a text for when it cannot be fixed and one with the fix flow
+        text = "fix_flow" if key in FIXABLE_ISSUES else "description"
+        assert set(issue) == {"title", text}, key
+    assert (
+        STRINGS["issues"][const.ISSUE_SETPOINT_MISMATCH_FIXABLE]["title"]
+        == STRINGS["issues"][const.ISSUE_SETPOINT_MISMATCH]["title"]
+    )
+
+
+def test_refusal_keys_translated() -> None:
+    """Every library refusal with a message of its own maps to a translated EXC_* key."""
+    exceptions = _constants("EXC_")
+    assert set(const.REFUSAL_KEYS.values()) <= exceptions
+    assert not set(const.REFUSAL_KEYS) & const.GENERIC_REFUSALS
+    # generic refusals share write_refused; none has a message of its own
+    assert not const.GENERIC_REFUSALS & exceptions
+    for key in const.REFUSAL_KEYS.values():
+        assert STRINGS["exceptions"][key]["message"], key
+        assert IT["exceptions"][key]["message"], key
 
 
 def test_placeholders_match_code() -> None:
@@ -144,14 +203,24 @@ def test_placeholders_match_code() -> None:
         return set(PLACEHOLDER.findall(text))
 
     exceptions = STRINGS["exceptions"]
-    assert placeholders(exceptions["cannot_connect"]["message"]) == {"host"}
-    for key in set(exceptions) - {"cannot_connect"}:
-        assert placeholders(exceptions[key]["message"]) == set(), key
+    for key in exceptions:
+        expected = EXCEPTION_PLACEHOLDERS.get(key, set())
+        assert placeholders(exceptions[key]["message"]) == expected, key
     issues = STRINGS["issues"]
     assert placeholders(issues["setpoint_mismatch"]["description"]) == {
         "setpoint",
         "level_temperature",
     }
+    # the fix flow (repairs.py) passes the issue's own placeholders to its confirm step
+    assert placeholders(issues["setpoint_mismatch_fixable"]["title"]) == set()
+    fix_flow = issues["setpoint_mismatch_fixable"]["fix_flow"]
+    assert placeholders(fix_flow["step"]["confirm"]["description"]) == {
+        "setpoint",
+        "level_temperature",
+    }
+    assert placeholders(fix_flow["step"]["confirm"]["title"]) == set()
+    assert placeholders(fix_flow["abort"]["not_fixed"]) == set()
+    assert placeholders(fix_flow["abort"]["not_confirmed"]) == set()
     assert placeholders(issues["unsupported_api"]["description"]) == {"version"}
     # raised at setup without any state: no version, no "keeps the last known state"
     assert placeholders(issues["unsupported_api_setup"]["description"]) == set()
@@ -185,7 +254,85 @@ def test_config_flow_keys_exist() -> None:
         assert set(config["step"][step]["data_description"]) == keys, step
         assert {"title", "description"} <= set(config["step"][step]), step
     init = STRINGS["options"]["step"]["init"]
-    assert set(init["data"]) == set(init["data_description"]) == {"temporary_comfort_duration"}
+    assert (
+        set(init["data"])
+        == set(init["data_description"])
+        == {const.CONF_ENABLE_CONTROL, const.CONF_TEMPORARY_COMFORT_DURATION}
+    )
+    # listed in the order of the options form
+    assert list(init["data"]) == [const.CONF_ENABLE_CONTROL, const.CONF_TEMPORARY_COMFORT_DURATION]
+
+
+@pytest.mark.parametrize("language", ["en", "it"])
+def test_control_texts(language: str) -> None:
+    """The control texts name the option as the form shows it and say what is not available."""
+    tree = {"en": STRINGS, "it": IT}[language]
+    words = CONTROL_WORDS[language]
+    init = tree["options"]["step"]["init"]
+    option = init["data"][const.CONF_ENABLE_CONTROL]
+    # every text that sends the user to the option uses the option's own label
+    assert option in tree["exceptions"][const.EXC_CONTROL_DISABLED]["message"]
+    assert option in init["description"]
+    assert option in tree["issues"][const.ISSUE_SETPOINT_MISMATCH]["description"]
+    # turning control on warns to take a backup first
+    assert words["backup"] in init["data_description"][const.CONF_ENABLE_CONTROL]
+    # temporary comfort: the actions stay registered, but say they are not available yet
+    unavailable = tree["exceptions"][const.EXC_TEMPORARY_COMFORT_UNAVAILABLE]["message"]
+    assert words["not_available"] in unavailable.lower()
+    for service in (const.SERVICE_SET_TEMPORARY_COMFORT, const.SERVICE_CLEAR_TEMPORARY_COMFORT):
+        description = tree["services"][service]["description"].lower()
+        assert words["not_available"] in description, service
+        assert words["refused"] in description, service
+    assert words["not_available"] in (
+        init["data_description"][const.CONF_TEMPORARY_COMFORT_DURATION].lower()
+    )
+    # refused numbers: invalid_value says nothing was sent; the range is in °C
+    invalid = tree["exceptions"][const.EXC_INVALID_VALUE]["message"].lower()
+    assert words["nothing_sent"] in invalid
+    assert tree["exceptions"][const.EXC_TARGET_OUT_OF_RANGE]["message"].count("°C") == 2
+
+
+@pytest.mark.parametrize("language", ["en", "it"])
+def test_setpoint_fix_abort_texts(language: str) -> None:
+    """The fix flow's aborts say whether anything was sent (repairs.py picks one)."""
+    tree = {"en": STRINGS, "it": IT}[language]
+    words = CONTROL_WORDS[language]
+    abort = tree["issues"][const.ISSUE_SETPOINT_MISMATCH_FIXABLE]["fix_flow"]["abort"]
+    not_fixed = abort["not_fixed"].lower()
+    not_confirmed = abort["not_confirmed"].lower()
+    # a refusal: nothing was sent, so nothing can have been applied
+    assert words["nothing_sent"] in not_fixed
+    assert words["may_have_been_applied"] not in not_fixed
+    assert words["did_not_confirm"] not in not_fixed
+    # sent, not confirmed: it may have been applied
+    assert words["did_not_confirm"] in not_confirmed
+    assert words["may_have_been_applied"] in not_confirmed
+    assert words["nothing_sent"] not in not_confirmed
+
+
+def test_readme_quotes_the_messages() -> None:
+    """The README quotes the English error messages and the option name as they are."""
+    readme = (ROOT / "README.md").read_text("utf-8")
+    for key, words in README_QUOTES.items():
+        assert words in STRINGS["exceptions"][key]["message"], key
+        assert f'"{words.lower()}' in readme.lower(), key
+    option = STRINGS["options"]["step"]["init"]["data"][const.CONF_ENABLE_CONTROL]
+    assert f"| {option} |" in readme  # the Options table
+    assert f"**{option}**" in readme
+
+
+def test_no_read_only_wording_left() -> None:
+    """The texts of the read-only preview are gone (control is an option now)."""
+    stale = ("read-only", "this version", "only reads")
+    stale_it = ("sola lettura", "questa versione", "legge soltanto")
+    for path, text in _leaves(STRINGS):
+        if path.startswith(("entity.", "exceptions.read_only.")):
+            continue  # the controller's own read-only mode keeps its name
+        assert not any(word in text.lower() for word in stale), path
+    for path, text in _leaves(IT):
+        if path.startswith(("entity.", "exceptions.read_only.")):
+            continue
+        assert not any(word in text.lower() for word in stale_it), path
 
 
 def test_devices_translated() -> None:

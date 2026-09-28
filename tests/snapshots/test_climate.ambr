@@ -897,7 +897,6 @@
     'area_id': None,
     'capabilities': dict({
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -935,7 +934,7 @@
     'platform': 'rehom',
     'previous_unique_id': None,
     'suggested_object_id': None,
-    'supported_features': <ClimateEntityFeature: 401>,
+    'supported_features': <ClimateEntityFeature: 273>,
     'translation_key': 'house',
     'unique_id': '02:00:00:31:7a:5a_plant_climate',
     'unit_of_measurement': None,
@@ -949,7 +948,6 @@
       <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Rehom plant',
       <ClimateEntityStateAttribute.HVAC_ACTION: 'hvac_action'>: <HVACAction.IDLE: 'idle'>,
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -963,7 +961,7 @@
         'comfort',
       ]),
       'setpoint_mismatch': True,
-      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 401>,
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 273>,
       <ClimateEntityCapabilityAttribute.TARGET_TEMP_STEP: 'target_temp_step'>: 0.1,
       <ClimateEntityStateAttribute.TARGET_TEMPERATURE: 'temperature'>: 24.0,
     }),
@@ -983,7 +981,6 @@
     'area_id': None,
     'capabilities': dict({
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1022,7 +1019,7 @@
     'platform': 'rehom',
     'previous_unique_id': None,
     'suggested_object_id': None,
-    'supported_features': <ClimateEntityFeature: 401>,
+    'supported_features': <ClimateEntityFeature: 273>,
     'translation_key': 'zone',
     'unique_id': '02:00:00:31:7a:5a_zone_001_climate',
     'unit_of_measurement': None,
@@ -1037,7 +1034,6 @@
       <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Zona 001',
       <ClimateEntityStateAttribute.HVAC_ACTION: 'hvac_action'>: <HVACAction.IDLE: 'idle'>,
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1051,7 +1047,7 @@
         'comfort',
         'temporary_comfort',
       ]),
-      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 401>,
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 273>,
       <ClimateEntityCapabilityAttribute.TARGET_TEMP_STEP: 'target_temp_step'>: 1.0,
       <ClimateEntityStateAttribute.TARGET_TEMPERATURE: 'temperature'>: 24.0,
     }),
@@ -1071,7 +1067,6 @@
     'area_id': None,
     'capabilities': dict({
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1110,7 +1105,7 @@
     'platform': 'rehom',
     'previous_unique_id': None,
     'suggested_object_id': None,
-    'supported_features': <ClimateEntityFeature: 401>,
+    'supported_features': <ClimateEntityFeature: 273>,
     'translation_key': 'zone',
     'unique_id': '02:00:00:31:7a:5a_zone_002_climate',
     'unit_of_measurement': None,
@@ -1125,7 +1120,6 @@
       <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Zona 002',
       <ClimateEntityStateAttribute.HVAC_ACTION: 'hvac_action'>: <HVACAction.IDLE: 'idle'>,
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1139,7 +1133,7 @@
         'comfort',
         'temporary_comfort',
       ]),
-      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 401>,
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 273>,
       <ClimateEntityCapabilityAttribute.TARGET_TEMP_STEP: 'target_temp_step'>: 1.0,
       <ClimateEntityStateAttribute.TARGET_TEMPERATURE: 'temperature'>: 23.0,
     }),
@@ -1159,7 +1153,6 @@
     'area_id': None,
     'capabilities': dict({
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1198,7 +1191,7 @@
     'platform': 'rehom',
     'previous_unique_id': None,
     'suggested_object_id': None,
-    'supported_features': <ClimateEntityFeature: 401>,
+    'supported_features': <ClimateEntityFeature: 273>,
     'translation_key': 'zone',
     'unique_id': '02:00:00:31:7a:5a_zone_003_climate',
     'unit_of_measurement': None,
@@ -1213,7 +1206,6 @@
       <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Zona 003',
       <ClimateEntityStateAttribute.HVAC_ACTION: 'hvac_action'>: <HVACAction.IDLE: 'idle'>,
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1227,7 +1219,7 @@
         'comfort',
         'temporary_comfort',
       ]),
-      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 401>,
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 273>,
       <ClimateEntityCapabilityAttribute.TARGET_TEMP_STEP: 'target_temp_step'>: 1.0,
       <ClimateEntityStateAttribute.TARGET_TEMPERATURE: 'temperature'>: 24.0,
     }),
@@ -1247,7 +1239,6 @@
     'area_id': None,
     'capabilities': dict({
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1286,7 +1277,7 @@
     'platform': 'rehom',
     'previous_unique_id': None,
     'suggested_object_id': None,
-    'supported_features': <ClimateEntityFeature: 401>,
+    'supported_features': <ClimateEntityFeature: 273>,
     'translation_key': 'zone',
     'unique_id': '02:00:00:31:7a:5a_zone_009_climate',
     'unit_of_measurement': None,
@@ -1301,7 +1292,6 @@
       <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Zona 009',
       <ClimateEntityStateAttribute.HVAC_ACTION: 'hvac_action'>: <HVACAction.IDLE: 'idle'>,
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1315,7 +1305,7 @@
         'comfort',
         'temporary_comfort',
       ]),
-      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 401>,
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 273>,
       <ClimateEntityCapabilityAttribute.TARGET_TEMP_STEP: 'target_temp_step'>: 1.0,
       <ClimateEntityStateAttribute.TARGET_TEMPERATURE: 'temperature'>: 24.0,
     }),
@@ -1335,7 +1325,6 @@
     'area_id': None,
     'capabilities': dict({
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1374,7 +1363,7 @@
     'platform': 'rehom',
     'previous_unique_id': None,
     'suggested_object_id': None,
-    'supported_features': <ClimateEntityFeature: 401>,
+    'supported_features': <ClimateEntityFeature: 273>,
     'translation_key': 'zone',
     'unique_id': '02:00:00:31:7a:5a_zone_010_climate',
     'unit_of_measurement': None,
@@ -1389,7 +1378,6 @@
       <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Zona 010',
       <ClimateEntityStateAttribute.HVAC_ACTION: 'hvac_action'>: <HVACAction.IDLE: 'idle'>,
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1403,7 +1391,7 @@
         'comfort',
         'temporary_comfort',
       ]),
-      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 401>,
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 273>,
       <ClimateEntityCapabilityAttribute.TARGET_TEMP_STEP: 'target_temp_step'>: 1.0,
       <ClimateEntityStateAttribute.TARGET_TEMPERATURE: 'temperature'>: 24.0,
     }),
@@ -1423,7 +1411,6 @@
     'area_id': None,
     'capabilities': dict({
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1462,7 +1449,7 @@
     'platform': 'rehom',
     'previous_unique_id': None,
     'suggested_object_id': None,
-    'supported_features': <ClimateEntityFeature: 401>,
+    'supported_features': <ClimateEntityFeature: 273>,
     'translation_key': 'zone',
     'unique_id': '02:00:00:31:7a:5a_zone_011_climate',
     'unit_of_measurement': None,
@@ -1476,7 +1463,6 @@
       <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Zona 011',
       <ClimateEntityStateAttribute.HVAC_ACTION: 'hvac_action'>: <HVACAction.IDLE: 'idle'>,
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
-        <HVACMode.OFF: 'off'>,
         <HVACMode.AUTO: 'auto'>,
         <HVACMode.COOL: 'cool'>,
       ]),
@@ -1490,7 +1476,7 @@
         'comfort',
         'temporary_comfort',
       ]),
-      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 401>,
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 273>,
       <ClimateEntityCapabilityAttribute.TARGET_TEMP_STEP: 'target_temp_step'>: 1.0,
       <ClimateEntityStateAttribute.TARGET_TEMPERATURE: 'temperature'>: 24.0,
     }),

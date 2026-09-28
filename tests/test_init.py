@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
+import logging
 from typing import Any
 
 from aiorehom import (
@@ -30,6 +31,8 @@ from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
 from custom_components.rehom import api, async_remove_config_entry_device
 from custom_components.rehom.const import (
+    CONF_ENABLE_CONTROL,
+    CONF_TEMPORARY_COMFORT_DURATION,
     DOMAIN,
     ISSUE_INSTALLER_SESSION_ACTIVE,
     ISSUE_SEASON_MISMATCH,
@@ -46,7 +49,7 @@ from custom_components.rehom.issues import (
     issue_id,
 )
 
-from .conftest import ENTRY_DATA
+from .conftest import CONTROL_OPTIONS, ENTRY_DATA
 from .harness import FIXTURE_MAC, FIXTURE_VMCS, FIXTURE_ZONES, RehomHarness
 
 ALL_ISSUES = (
@@ -98,6 +101,10 @@ async def test_setup_entry(
     assert isinstance(runtime, RehomRuntimeData)
     assert runtime.client is harness.client
     assert harness.client_data == [ENTRY_DATA]
+    # "Enable control" is off: the client is read-only
+    assert harness.allow_writes == [False]
+    assert runtime.client.allow_writes is False
+    assert runtime.control_enabled is False
     assert runtime.client.connection_state is ConnectionState.CONNECTED
     assert isinstance(runtime.coordinator, RehomCoordinator)
     assert runtime.coordinator.hub_id == FIXTURE_MAC
@@ -120,6 +127,50 @@ async def test_setup_entry(
     assert hub.configuration_url == "http://rehomserver.local:8000/www/"
     assert hub.via_device_id is None
     assert hub.area_id is None
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+async def test_setup_entry_control_enabled(
+    hass: HomeAssistant,
+    harness: RehomHarness,
+    mock_config_entry: MockConfigEntry,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """ "Enable control" on: the client is built with writes, and that is logged once."""
+    caplog.set_level(logging.INFO, logger="custom_components.rehom")
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await harness.settle()
+    runtime = mock_config_entry.runtime_data
+    assert harness.allow_writes == [True]
+    assert runtime.client.allow_writes is True
+    assert runtime.control_enabled is True
+    assert caplog.text.count("Control is enabled") == 1
+    assert "post_bulk_update" not in harness.transport_calls  # setting up writes nothing
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+
+@pytest.mark.parametrize(
+    "entry_options",
+    [
+        {},
+        {CONF_TEMPORARY_COMFORT_DURATION: 2.0, CONF_ENABLE_CONTROL: False},
+        {CONF_ENABLE_CONTROL: "true"},
+        {CONF_ENABLE_CONTROL: 1},
+    ],
+    ids=["missing", "false", "string", "int"],
+)
+async def test_setup_entry_control_off(
+    hass: HomeAssistant,
+    harness: RehomHarness,
+    init_integration: MockConfigEntry,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Only an exact True enables control; anything else builds a read-only client."""
+    assert harness.allow_writes == [False]
+    assert init_integration.runtime_data.control_enabled is False
+    assert "Control is enabled" not in caplog.text
 
 
 @pytest.mark.parametrize("platforms", [list(PLATFORMS)])
@@ -481,6 +532,7 @@ async def test_create_client(hass: HomeAssistant) -> None:
     client = api.create_client(hass, {**ENTRY_DATA, CONF_PORT: "8000"})
     assert isinstance(client, RehomClient)
     assert client.host == "rehomserver.local"
+    assert client.allow_writes is False  # read-only unless asked
     assert client.connection_state is ConnectionState.DISCONNECTED
     # inject-websession: REST uses HA's shared session, and the WebSocket's private
     # session borrows its connector, i.e. HA's (mDNS-capable) resolver for *.local.
@@ -497,6 +549,19 @@ async def test_create_client(hass: HomeAssistant) -> None:
         api.create_client(hass, {**ENTRY_DATA, CONF_HOST: "bad host!"})
     with pytest.raises(ValueError):  # noqa: PT011
         api.create_client(hass, {**ENTRY_DATA, CONF_PORT: 70000})
+
+
+async def test_create_client_allow_writes(hass: HomeAssistant) -> None:
+    """``allow_writes=True`` builds a writable client; anything but a bool is refused."""
+    client = api.create_client(hass, ENTRY_DATA, allow_writes=True)
+    assert client.allow_writes is True
+    assert client.connection_state is ConnectionState.DISCONNECTED
+    await client.close()
+    client = api.create_client(hass, ENTRY_DATA, allow_writes=False)
+    assert client.allow_writes is False
+    await client.close()
+    with pytest.raises(TypeError):
+        api.create_client(hass, ENTRY_DATA, allow_writes="true")  # type: ignore[arg-type]
 
 
 async def test_services_registered_without_entries(hass: HomeAssistant) -> None:

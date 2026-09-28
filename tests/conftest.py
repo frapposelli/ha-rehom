@@ -17,6 +17,7 @@ from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotEx
 from syrupy.assertion import SnapshotAssertion
 
 from custom_components.rehom.const import (
+    CONF_ENABLE_CONTROL,
     CONF_TEMPORARY_COMFORT_DURATION,
     DEFAULT_TEMPORARY_COMFORT_DURATION,
     DEFAULT_TITLE,
@@ -24,7 +25,7 @@ from custom_components.rehom.const import (
     PLATFORMS,
 )
 
-from .harness import FIXTURE_MAC, RehomHarness, load_device
+from .harness import FIXTURE_MAC, RehomHarness, load_device, set_values
 
 ENTRY_DATA = {
     CONF_HOST: "rehomserver.local",
@@ -32,6 +33,18 @@ ENTRY_DATA = {
     CONF_USERNAME: "user",
     CONF_PASSWORD: "test-password",
 }
+#: Options of an entry with "Enable control" on: return them from an ``entry_options``
+#: override in a control test module.
+CONTROL_OPTIONS: dict[str, Any] = {
+    CONF_TEMPORARY_COMFORT_DURATION: DEFAULT_TEMPORARY_COMFORT_DURATION,
+    CONF_ENABLE_CONTROL: True,
+}
+#: Interface values that put the fixture's house in AUTO (the capture is MANUAL/COMFORT,
+#: which refuses zone modes and the predictive switch with ``house_not_auto``).  Combine
+#: with other values as ``set_values({**HOUSE_AUTO_VALUES, ...})``.
+HOUSE_AUTO_VALUES: dict[str, str] = {"REHOM...MODO": "2", "REHOM...SET_POINT": "0"}
+#: ``device_patch`` for the house in AUTO.
+HOUSE_AUTO: dict[str, Any] = set_values(HOUSE_AUTO_VALUES)
 
 
 @pytest.fixture(autouse=True)
@@ -66,14 +79,23 @@ def entity_registry_enabled_by_default() -> Generator[None]:
 
 
 @pytest.fixture
-def mock_config_entry() -> MockConfigEntry:
+def entry_options() -> dict[str, Any]:
+    """Options of ``mock_config_entry``: "Enable control" off (not set), as on older entries.
+
+    Control test modules override this fixture to return :data:`CONTROL_OPTIONS`.
+    """
+    return {CONF_TEMPORARY_COMFORT_DURATION: DEFAULT_TEMPORARY_COMFORT_DURATION}
+
+
+@pytest.fixture
+def mock_config_entry(entry_options: dict[str, Any]) -> MockConfigEntry:
     """A config entry for the fixture controller."""
     return MockConfigEntry(
         domain=DOMAIN,
         title=DEFAULT_TITLE,
         unique_id=FIXTURE_MAC,
         data=dict(ENTRY_DATA),
-        options={CONF_TEMPORARY_COMFORT_DURATION: DEFAULT_TEMPORARY_COMFORT_DURATION},
+        options=dict(entry_options),
         version=1,
         minor_version=1,
     )
@@ -83,8 +105,9 @@ def mock_config_entry() -> MockConfigEntry:
 def device_patch() -> dict[str, Any] | None:
     """Override in a test module to patch the snapshot (``ReplayData``) or add frames.
 
-    Return ``{"patch": callable, "extra_frames": [...]}`` from an override;
-    the default is the unmodified fixture.
+    Return ``{"patch": callable, "extra_frames": [...]}`` from an override
+    (``harness.set_values`` builds one; :data:`HOUSE_AUTO` is one); the default
+    is the unmodified fixture.
     """
     return
 

@@ -1,5 +1,9 @@
 """The only place that constructs an aiorehom client.
 
+A client is read-only unless it is built with ``allow_writes=True``, which only
+the entry setup does, and only while the "Enable control" option is on.  The
+config flow's probe is always read-only.
+
 Tests replace :func:`create_client` (``custom_components.rehom.api.create_client``)
 with a factory that returns a real ``RehomClient`` on a replay transport.
 Callers MUST call it as ``api.create_client(...)`` (module attribute lookup),
@@ -32,9 +36,14 @@ class ControllerInfo:
     controller_version: str | None
 
 
-def create_client(hass: HomeAssistant, data: Mapping[str, Any]) -> RehomClient:
-    """A new, unconnected, read-only client for ``data`` (entry data or form input).
+def create_client(
+    hass: HomeAssistant, data: Mapping[str, Any], *, allow_writes: bool = False
+) -> RehomClient:
+    """A new, unconnected client for ``data`` (entry data or form input).
 
+    The client is read-only unless ``allow_writes`` is exactly ``True`` (the
+    library refuses anything but a ``bool``); the flag is fixed for the
+    client's lifetime, so changing the option reloads the entry.
     Raises ``ValueError`` for an invalid host or port (aiorehom validates them).
     The shared HA session is used for REST and is never modified by the library.
     The library's private WebSocket session borrows that session's connector,
@@ -49,14 +58,16 @@ def create_client(hass: HomeAssistant, data: Mapping[str, Any]) -> RehomClient:
         username=data[CONF_USERNAME],
         password=data[CONF_PASSWORD],
         session=async_get_clientsession(hass),
+        allow_writes=allow_writes,
     )
 
 
 async def async_probe(hass: HomeAssistant, data: Mapping[str, Any]) -> ControllerInfo:
     """Connect once (login, WebSocket, full snapshot), read the identity, close.
 
-    Raises ``ValueError`` (invalid host/port), any ``aiorehom`` error from
-    ``connect()``, or :class:`MissingMacError`.  The client is always closed.
+    The probe client is always read-only.  Raises ``ValueError`` (invalid
+    host/port), any ``aiorehom`` error from ``connect()``, or
+    :class:`MissingMacError`.  The client is always closed.
     """
     client = create_client(hass, data)
     try:

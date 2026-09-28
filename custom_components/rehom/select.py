@@ -1,7 +1,11 @@
 """VMC operating mode as a select.
 
-Read-only in this version: every select action ends in ``async_select_option``, which
-raises ``control_disabled``.
+The options are the modes the installer made selectable, without the rapid
+modes (timed cycles Home Assistant never starts), plus the current mode so the
+state is never unknown.  Every select action ends in ``async_select_option``,
+which writes the mode through :mod:`.control` (``control_disabled`` unless
+"Enable control" is on; a mode never tested on a real controller is refused
+with ``not_verified``).
 """
 
 from __future__ import annotations
@@ -15,14 +19,10 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from . import control
+from .const import VMC_RAPID_MODES
 from .coordinator import RehomConfigEntry, RehomCoordinator
-from .entity import (
-    EntityFactory,
-    RehomEntity,
-    async_setup_dynamic_entities,
-    entity_unique_id,
-    raise_control_disabled,
-)
+from .entity import EntityFactory, RehomEntity, async_setup_dynamic_entities, entity_unique_id
 
 PARALLEL_UPDATES = 1
 
@@ -49,13 +49,14 @@ async def async_setup_entry(
 
 
 class RehomVmcModeSelect(RehomEntity, SelectEntity):
-    """The VMC's selected mode (``ST_MODE``)."""
+    """The VMC's selected mode (``ST_MODE``), in the order of :class:`~aiorehom.VmcMode`."""
 
     _attr_translation_key = KEY
 
     def __init__(self, coordinator: RehomCoordinator, vmc_id: str) -> None:
         """VMC entity."""
         super().__init__(coordinator, DeviceKind.VMC, vmc_id, KEY)
+        self._vmc_id = vmc_id
 
     @property
     @override
@@ -63,7 +64,7 @@ class RehomVmcModeSelect(RehomEntity, SelectEntity):
         vmc = self.vmc
         if vmc is None:
             return []
-        modes = set(vmc.selectable_modes)
+        modes = set(vmc.selectable_modes) - VMC_RAPID_MODES
         if vmc.mode is not None:
             modes.add(vmc.mode)  # a mode set elsewhere is shown even if not selectable
         return [mode.name.lower() for mode in VmcMode if mode in modes]
@@ -78,4 +79,7 @@ class RehomVmcModeSelect(RehomEntity, SelectEntity):
 
     @override
     async def async_select_option(self, option: str) -> None:
-        raise_control_disabled()
+        """Write the mode (Home Assistant has checked that ``option`` is listed)."""
+        await control.async_set_vmc_mode(
+            self.coordinator.config_entry, self._vmc_id, VmcMode[option.upper()]
+        )

@@ -1,8 +1,11 @@
 """Integration actions.
 
-``rehom.get_schedule`` returns data; ``rehom.set_temporary_comfort`` and
-``rehom.clear_temporary_comfort`` are refused (read-only) after their
-schema validated the input, and never reach the controller.
+``rehom.get_schedule`` returns data.  ``rehom.set_temporary_comfort`` and
+``rehom.clear_temporary_comfort`` keep their schema (so automations that use
+them still load) but are always refused after it validated the input, and
+never reach the controller: ``control_disabled`` while "Enable control" is off;
+with it on, ``temporary_comfort_unavailable`` on a zone (not available yet) and
+``zone_only`` on the house.
 """
 
 from __future__ import annotations
@@ -27,6 +30,7 @@ from custom_components.rehom.const import (
     SERVICE_SET_TEMPORARY_COMFORT,
 )
 
+from .conftest import CONTROL_OPTIONS
 from .harness import FIXTURE_MAC, FIXTURE_ZONES, RehomHarness
 
 LEVELS = {"off", "economy", "pre_comfort", "comfort", None}
@@ -137,16 +141,39 @@ async def test_set_temporary_comfort_invalid_duration(
     assert harness.transport_calls == calls
 
 
-@pytest.mark.parametrize(
-    ("service", "data"),
-    [
-        (SERVICE_SET_TEMPORARY_COMFORT, {}),
-        (SERVICE_SET_TEMPORARY_COMFORT, {ATTR_DURATION: 0.5}),
-        (SERVICE_SET_TEMPORARY_COMFORT, {ATTR_DURATION: "1.5"}),
-        (SERVICE_SET_TEMPORARY_COMFORT, {ATTR_DURATION: 24}),
-        (SERVICE_CLEAR_TEMPORARY_COMFORT, {}),
-    ],
-)
+TEMPORARY_COMFORT_CALLS = [
+    (SERVICE_SET_TEMPORARY_COMFORT, {}),
+    (SERVICE_SET_TEMPORARY_COMFORT, {ATTR_DURATION: 0.5}),
+    (SERVICE_SET_TEMPORARY_COMFORT, {ATTR_DURATION: "1.5"}),
+    (SERVICE_SET_TEMPORARY_COMFORT, {ATTR_DURATION: 24}),
+    (SERVICE_CLEAR_TEMPORARY_COMFORT, {}),
+]
+
+
+async def _assert_refused(
+    hass: HomeAssistant,
+    harness: RehomHarness,
+    entity_id: str,
+    service: str,
+    data: dict[str, Any],
+    *,
+    key: str,
+) -> None:
+    """The call reaches the entity and is refused with ``key``; nothing else happens."""
+    state = hass.states.get(entity_id)
+    calls = harness.transport_calls
+    with pytest.raises(ServiceValidationError) as err:
+        await _call(hass, service, entity_id, **data)
+    assert err.value.translation_domain == DOMAIN
+    assert err.value.translation_key == key
+    await harness.settle()
+    assert harness.transport_calls == calls
+    assert harness.writes == []
+    assert harness.client.connection_state is ConnectionState.CONNECTED
+    assert hass.states.get(entity_id) == state
+
+
+@pytest.mark.parametrize(("service", "data"), TEMPORARY_COMFORT_CALLS)
 @pytest.mark.parametrize("device", ["plant", "zone_001"])
 async def test_temporary_comfort_control_disabled(  # noqa: PLR0917
     hass: HomeAssistant,
@@ -157,14 +184,29 @@ async def test_temporary_comfort_control_disabled(  # noqa: PLR0917
     data: dict[str, Any],
     device: str,
 ) -> None:
-    """Valid calls reach the entity and are refused there, without any request."""
-    entity_id = _climate(entity_registry, device)
-    state = hass.states.get(entity_id)
-    calls = harness.transport_calls
-    with pytest.raises(ServiceValidationError) as err:
-        await _call(hass, service, entity_id, **data)
-    assert err.value.translation_domain == DOMAIN
-    assert err.value.translation_key == "control_disabled"
-    assert harness.transport_calls == calls
-    assert harness.client.connection_state is ConnectionState.CONNECTED
-    assert hass.states.get(entity_id) == state
+    """Control off: valid calls reach the entity and are refused there, without any request."""
+    assert harness.allow_writes == [False]
+    await _assert_refused(
+        hass, harness, _climate(entity_registry, device), service, data, key="control_disabled"
+    )
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+@pytest.mark.parametrize(("service", "data"), TEMPORARY_COMFORT_CALLS)
+@pytest.mark.parametrize(
+    ("device", "key"),
+    [("plant", "zone_only"), ("zone_001", "temporary_comfort_unavailable")],
+)
+async def test_temporary_comfort_unavailable(  # noqa: PLR0917
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    harness: RehomHarness,
+    entity_registry: er.EntityRegistry,
+    service: str,
+    data: dict[str, Any],
+    device: str,
+    key: str,
+) -> None:
+    """Control on: a zone's temporary comfort is not available yet; the house has none."""
+    assert harness.allow_writes == [True]
+    await _assert_refused(hass, harness, _climate(entity_registry, device), service, data, key=key)

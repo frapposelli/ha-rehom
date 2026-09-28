@@ -18,17 +18,16 @@ removed automatically).  Plant values derived from zones follow rules 2 and 5.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from typing import ClassVar, NoReturn
+from typing import ClassVar
 
 from aiorehom import Alarm, AlarmSource, DeviceKind, Plant, RehomState, Vmc, Zone
 from homeassistant.core import callback
-from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, EXC_CONTROL_DISABLED, HOUSE_TEMPERATURE_ZONE, MANUFACTURER
+from .const import DOMAIN, HOUSE_TEMPERATURE_ZONE, MANUFACTURER
 from .coordinator import RehomConfigEntry, RehomCoordinator
 
 #: Device kinds that get a Home Assistant device (actuators and fancoils do not).
@@ -37,11 +36,6 @@ DEVICE_KINDS: frozenset[DeviceKind] = frozenset(
 )
 #: Unit device kinds (need a unit id; availability rules 2, 3 and 5 apply).
 UNIT_KINDS: frozenset[DeviceKind] = frozenset({DeviceKind.ZONE, DeviceKind.VMC})
-
-
-def raise_control_disabled() -> NoReturn:
-    """Read-only in this version: every control action ends here, before touching the client."""
-    raise ServiceValidationError(translation_domain=DOMAIN, translation_key=EXC_CONTROL_DISABLED)
 
 
 def device_identifier(hub_id: str, kind: DeviceKind, unit: str | None = None) -> tuple[str, str]:

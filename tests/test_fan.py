@@ -158,6 +158,32 @@ async def test_only_stop_selectable(
     "device_patch",
     [
         _frames(
+            *(
+                ("10:23:00", f"DEUM...{key}", "0")
+                for key in (
+                    "DEUM_ARIA_NEUTRA",
+                    "DEUM_INT_FREDDO",
+                    "ABILITA_INTEGR_FREDDO",
+                    "ABILITA_VENTILA",
+                )
+            )
+        )
+    ],
+)
+async def test_only_stop_and_rapid_selectable(
+    hass: HomeAssistant, harness: RehomHarness, init_integration: MockConfigEntry
+) -> None:
+    """Turning on never starts a rapid (timed) cycle, so STOP + rapid renewal is no turn-on."""
+    await harness.advance_to(T("10:23:05"))
+    assert get_state(hass, FAN).attributes[ATTR_SUPPORTED_FEATURES] == (
+        FanEntityFeature.SET_SPEED | FanEntityFeature.TURN_OFF
+    )
+
+
+@pytest.mark.parametrize(
+    "device_patch",
+    [
+        _frames(
             ("10:23:00", "REHOM...PRESENZA_DEUM", "1,0,0"),
             ("10:23:00", "DEUM.001..COM_VENTILA", "x"),
             ("10:23:00", "DEUM.001..ST_MODE", "x"),
