@@ -1,15 +1,23 @@
-"""Repair issues (none of them is fixable from Home Assistant in this version).
+"""Repair issues: when each one is raised and deleted.
 
-This module is deliberately not named ``repairs.py``: HA loads ``repairs.py``
-as the repairs *platform* and requires ``async_create_fix_flow`` there.  A fix
-flow for ``setpoint_mismatch`` needs control, so it arrives with control.
+Only ``setpoint_mismatch`` can be fixable, and only while "Enable control" is
+on and the house is at a level Home Assistant may send
+(:func:`setpoint_fix_preset`); its fix flow is in ``repairs.py``, the repairs
+platform Home Assistant loads.  While fixable, the issue keeps its id and takes
+the ``setpoint_mismatch_fixable`` texts (the fix flow).  The other issues are
+never fixable from Home Assistant.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timedelta
+from types import MappingProxyType
+from typing import Final
 
+from aiorehom import MasterPreset, Plant
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
@@ -21,12 +29,14 @@ from .const import (
     ISSUE_INSTALLER_SESSION_ACTIVE,
     ISSUE_SEASON_MISMATCH,
     ISSUE_SETPOINT_MISMATCH,
+    ISSUE_SETPOINT_MISMATCH_FIXABLE,
     ISSUE_UNSUPPORTED_API,
     ISSUE_UNSUPPORTED_API_SETUP,
     SEASON_MISMATCH_GRACE,
     SETPOINT_MISMATCH_GRACE,
     UNSUPPORTED_API_MIN_FAILURES,
 )
+from .control import ControlOp, ensure_control_enabled, is_verified
 from .coordinator import RehomConfigEntry, RehomCoordinator
 
 #: Issues derived from the live state (deleted on unload).
@@ -43,8 +53,47 @@ def issue_id(key: str, entry_id: str) -> str:
     return f"{key}_{entry_id}"
 
 
+#: Key of the config entry id in a fixable issue's ``data`` (for its fix flow).
+FIX_DATA_ENTRY_ID: Final = "entry_id"
+#: Issue key -> its translation key while it is fixable.  An issue text has either a
+#: description or a fix flow (Home Assistant's schema), so the fixable variant has its own.
+FIXABLE_TRANSLATION_KEYS: Final[Mapping[str, str]] = MappingProxyType(
+    {ISSUE_SETPOINT_MISMATCH: ISSUE_SETPOINT_MISMATCH_FIXABLE}
+)
+#: House presets that select a level (MANUAL): re-sending one rewrites the setpoint.
+LEVEL_PRESETS: Final = frozenset(
+    {MasterPreset.ECONOMY, MasterPreset.PRE_COMFORT, MasterPreset.COMFORT}
+)
+
+
 def _fmt(value: float | None) -> str:
     return "?" if value is None else f"{value:g}"
+
+
+def setpoint_placeholders(plant: Plant) -> dict[str, str]:
+    """``{setpoint}`` and ``{level_temperature}`` of the setpoint_mismatch texts."""
+    return {
+        "setpoint": _fmt(plant.controller_setpoint),
+        "level_temperature": _fmt(plant.display_temperature),
+    }
+
+
+def setpoint_fix_preset(entry: RehomConfigEntry, plant: Plant) -> MasterPreset | None:
+    """The house level whose re-sending fixes ``setpoint_mismatch``, or ``None``.
+
+    Sending a MANUAL level always rewrites the controller's setpoint to that
+    level's temperature.  Home Assistant may do it only while control is
+    enabled (``control.ensure_control_enabled``) and for a level tested on a
+    real controller (``control.is_verified``).
+    """
+    try:
+        ensure_control_enabled(entry)
+    except HomeAssistantError:
+        return None
+    preset = plant.preset
+    if preset not in LEVEL_PRESETS or not is_verified(ControlOp.HOUSE_PRESET, preset):
+        return None
+    return preset
 
 
 @callback
@@ -139,15 +188,29 @@ class RehomIssueTracker:
         """Delete every state-derived issue of this entry (on unload)."""
         async_delete_issues(self._hass, self._entry.entry_id, STATE_ISSUES)
 
-    def _set(self, key: str, active: bool, placeholders: dict[str, str] | None = None) -> None:
+    def _set(
+        self,
+        key: str,
+        active: bool,
+        placeholders: dict[str, str] | None = None,
+        *,
+        fixable: bool = False,
+    ) -> None:
+        """Create (or update) the issue ``key`` while ``active``, else delete it.
+
+        A fixable issue keeps its issue id and uses its fixable translation key
+        (:data:`FIXABLE_TRANSLATION_KEYS`), whose text is the fix flow.
+        """
         if active:
+            translation_key = FIXABLE_TRANSLATION_KEYS[key] if fixable else key
             ir.async_create_issue(
                 self._hass,
                 DOMAIN,
                 issue_id(key, self._entry.entry_id),
-                is_fixable=False,
+                data={FIX_DATA_ENTRY_ID: self._entry.entry_id} if fixable else None,
+                is_fixable=fixable,
                 severity=ir.IssueSeverity.WARNING,
-                translation_key=key,
+                translation_key=translation_key,
                 translation_placeholders=placeholders,
             )
         else:
@@ -181,7 +244,8 @@ class RehomIssueTracker:
             self._observed_since = now
         plant = self._coordinator.data.plant
 
-        # setpoint_mismatch: MANUAL and SET_POINT_TEMP != level temperature for > 5 min
+        # setpoint_mismatch: MANUAL and SET_POINT_TEMP != level temperature for > 5 min;
+        # fixable while Home Assistant may re-send the level (checked on every evaluation)
         if plant.setpoint_mismatch is False:
             self._set(ISSUE_SETPOINT_MISMATCH, False)
         elif plant.setpoint_mismatch is True and self._mature(
@@ -190,10 +254,8 @@ class RehomIssueTracker:
             self._set(
                 ISSUE_SETPOINT_MISMATCH,
                 True,
-                {
-                    "setpoint": _fmt(plant.controller_setpoint),
-                    "level_temperature": _fmt(plant.display_temperature),
-                },
+                setpoint_placeholders(plant),
+                fixable=setpoint_fix_preset(self._entry, plant) is not None,
             )
 
         # installer_session_active: a plant-conf session flag = 1 for > 15 min

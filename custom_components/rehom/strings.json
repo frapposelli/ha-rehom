@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connect to the Rehom server",
-        "description": "Enter the address of the Rehom server and the credentials you use in the Rehom app. This version only reads the plant: control from Home Assistant is disabled.",
+        "description": "Enter the address of the Rehom server and the credentials you use in the Rehom app. Control from Home Assistant starts off: you can turn it on later in the integration options.",
         "data": {
           "host": "Host",
           "port": "Port",
@@ -74,12 +74,14 @@
     "step": {
       "init": {
         "title": "Rehom options",
-        "description": "Control from Home Assistant is disabled in this version: every control action is refused.",
+        "description": "Control from Home Assistant stays off until you turn on Enable control. Saving the options reloads the integration.",
         "data": {
+          "enable_control": "Enable control",
           "temporary_comfort_duration": "Default temporary comfort duration"
         },
         "data_description": {
-          "temporary_comfort_duration": "Hours of comfort used by the Set temporary comfort action when no duration is given (0.5 to 24)."
+          "enable_control": "Lets Home Assistant change the plant: house and zone modes, zone temperatures, the ventilation and the predictive algorithm. Changes are sent to the controller, so take a Home Assistant backup before you turn this on. Off by default.",
+          "temporary_comfort_duration": "Hours of comfort used by the Set temporary comfort action when no duration is given (0.5 to 24). That action is not available yet."
         }
       }
     }
@@ -356,17 +358,68 @@
     }
   },
   "exceptions": {
+    "bus_down": {
+      "message": "The Rehom controller has lost its serial line to the plant, so nothing can be changed now."
+    },
     "cannot_connect": {
       "message": "Cannot connect to the Rehom server at {host}."
     },
     "control_disabled": {
-      "message": "Control from Home Assistant is disabled: this version of the Rehom integration is read-only."
+      "message": "Control from Home Assistant is off. To use it, turn on Enable control in the Rehom integration options."
+    },
+    "crono_mode": {
+      "message": "The plant is controlled by the crono panel, so Home Assistant cannot change it. The Controlled by sensor shows what is in control."
+    },
+    "fan_locked_by_mode": {
+      "message": "The fan speed of this VMC cannot be changed in its current operating mode (stop, standby or a rapid mode)."
+    },
+    "fan_not_writable": {
+      "message": "The fan speed of this VMC cannot be changed: the installer has not enabled it."
+    },
+    "house_not_auto": {
+      "message": "This needs the house in automatic mode. Set the house thermostat to Auto first."
     },
     "invalid_auth": {
       "message": "The Rehom server refused the username or password."
     },
+    "invalid_value": {
+      "message": "The requested value is not a valid number, so nothing was sent to the Rehom controller."
+    },
+    "level_temperature_invalid": {
+      "message": "The temperature of that level is unknown or out of range on the controller, so the house cannot be set to it."
+    },
+    "mode_not_available": {
+      "message": "This operating mode is not available on this VMC: the installer has not enabled it."
+    },
+    "no_active_target": {
+      "message": "This zone has no target temperature right now, so its target cannot be set."
+    },
     "not_ready": {
       "message": "The Rehom server has not been read yet."
+    },
+    "not_supported": {
+      "message": "Home Assistant cannot do this on the Rehom controller. Use the official Rehom app."
+    },
+    "not_verified": {
+      "message": "Home Assistant does not send this setting yet: it has not been tested on a Rehom controller. Use the official Rehom app for it."
+    },
+    "read_only": {
+      "message": "The Rehom controller is in read-only mode, so nothing can be changed from Home Assistant."
+    },
+    "season_unknown": {
+      "message": "The controller has not reported the season, so this cannot be set now."
+    },
+    "setpoint_forced": {
+      "message": "The setpoint of this zone is forced on the controller, so its mode cannot be changed."
+    },
+    "target_out_of_range": {
+      "message": "The target temperature of this zone must be between {min} °C and {max} °C in its current mode, so it was not changed. A mode change requested in the same action has been applied."
+    },
+    "temporary_comfort_active": {
+      "message": "A temporary comfort is running in this zone, so its mode cannot be changed until it ends."
+    },
+    "temporary_comfort_unavailable": {
+      "message": "Temporary comfort is not available from Home Assistant yet. Use the official Rehom app."
     },
     "unavailable": {
       "message": "The Rehom server is not answering."
@@ -374,8 +427,26 @@
     "unsupported_api": {
       "message": "The Rehom server answers in a format this integration does not understand."
     },
+    "vmc_busy": {
+      "message": "This VMC is in an error state or in a forced mode, so it cannot be changed now."
+    },
+    "vmc_offline": {
+      "message": "This VMC is not responding, so it cannot be changed now."
+    },
+    "write_failed": {
+      "message": "Sending the change to the Rehom controller failed. It may or may not have been applied: the entity shows what the controller reports."
+    },
+    "write_not_confirmed": {
+      "message": "The change was sent to the Rehom controller, but the controller did not confirm it. It may have been applied: the entity shows what the controller reports."
+    },
+    "write_refused": {
+      "message": "The change was refused and nothing was sent to the Rehom controller (reason: {reason})."
+    },
     "wrong_device": {
       "message": "The configured address answers with a different Rehom server."
+    },
+    "zone_offline": {
+      "message": "The probe of this zone is not responding, so the zone cannot be changed now."
     },
     "zone_only": {
       "message": "This action is only available for zone thermostats."
@@ -392,7 +463,22 @@
     },
     "setpoint_mismatch": {
       "title": "The Rehom plant regulates to a different temperature",
-      "description": "The house is in manual mode, but for more than 5 minutes the controller has regulated to {setpoint} °C instead of the selected level's {level_temperature} °C. The Rehom web app can leave this stale setpoint behind. To fix it, raise the selected level's temperature by 0.1 °C in the official Rehom app and lower it again: this rewrites the controller setpoint."
+      "description": "The house is in manual mode, but for more than 5 minutes the controller has regulated to {setpoint} °C instead of the selected level's {level_temperature} °C. The Rehom web app can leave this stale setpoint behind. To fix it, raise the selected level's temperature by 0.1 °C in the official Rehom app and lower it again: this rewrites the controller setpoint. With Enable control on, Home Assistant offers to fix it itself for the levels it can set."
+    },
+    "setpoint_mismatch_fixable": {
+      "title": "The Rehom plant regulates to a different temperature",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Fix the controller setpoint",
+            "description": "The house is in manual mode, but the controller regulates to {setpoint} °C instead of the selected level's {level_temperature} °C. Home Assistant will select the same level again, which rewrites the controller setpoint to that level's temperature. Nothing else changes."
+          }
+        },
+        "abort": {
+          "not_fixed": "Home Assistant could not fix the setpoint, and nothing was sent to the controller. Control may be off, the house level may have changed, or the controller cannot accept the change now. Check the issue again later, or raise the selected level's temperature by 0.1 °C in the official Rehom app and lower it again.",
+          "not_confirmed": "Home Assistant sent the level to the controller again, but the controller did not confirm it. It may have been applied: if the controller now regulates to the level's temperature, this issue closes by itself. Otherwise, check the issue again later, or raise the selected level's temperature by 0.1 °C in the official Rehom app and lower it again."
+        }
+      }
     },
     "unsupported_api": {
       "title": "Unsupported Rehom server version",
@@ -406,7 +492,7 @@
   "services": {
     "clear_temporary_comfort": {
       "name": "Clear temporary comfort",
-      "description": "Ends the temporary comfort of a zone. Control is disabled in this version of the integration, so this action is refused."
+      "description": "Ends the temporary comfort of a zone. Not available yet: this action is refused."
     },
     "get_schedule": {
       "name": "Get schedule",
@@ -414,7 +500,7 @@
     },
     "set_temporary_comfort": {
       "name": "Set temporary comfort",
-      "description": "Keeps a zone at comfort for a number of hours. Control is disabled in this version of the integration, so this action is refused.",
+      "description": "Keeps a zone at comfort for a number of hours. Not available yet: this action is refused.",
       "fields": {
         "duration": {
           "name": "Duration",

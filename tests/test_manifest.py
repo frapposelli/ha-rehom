@@ -5,6 +5,8 @@ from __future__ import annotations
 import fnmatch
 import json
 from pathlib import Path
+import re
+import tomllib
 from typing import Any
 
 import aiorehom
@@ -42,8 +44,9 @@ def test_manifest_keys_and_values() -> None:
         "iot_class": "local_push",
         "issue_tracker": "https://github.com/frapposelli/ha-rehom/issues",
         "loggers": ["aiorehom"],
-        "requirements": ["aiorehom==0.2.0"],
-        "version": "0.1.0",
+        "requirements": ["aiorehom==0.3.0"],
+        # a beta, released on GitHub as a pre-release (HACS shows it with beta versions on)
+        "version": "0.2.0b1",
         "zeroconf": [{"type": "_http._tcp.local.", "name": "rehom*"}],
     }
 
@@ -51,6 +54,30 @@ def test_manifest_keys_and_values() -> None:
 def test_requirement_matches_library() -> None:
     """The pin follows the library the tests run against."""
     assert _manifest()["requirements"] == [f"aiorehom=={aiorehom.__version__}"]
+
+
+def _pinned_version() -> str:
+    (requirement,) = _manifest()["requirements"]
+    name, version = requirement.split("==")
+    assert name == "aiorehom"
+    return version
+
+
+def test_ci_tests_the_pinned_library() -> None:
+    """CI checks out the aiorehom tag of the manifest's pin (the two change together)."""
+    workflow = (ROOT / ".github" / "workflows" / "tests.yml").read_text("utf-8")
+    version = _pinned_version()
+    refs = re.findall(r"^\s*AIOREHOM_REF:\s*(\S+)\s*$", workflow, re.MULTILINE)
+    assert refs == [f"v{version}"]
+    assert f"(aiorehom=={version})" in workflow  # the comment next to it
+
+
+def test_lock_file_has_the_pinned_library() -> None:
+    """uv.lock resolves the checkout in lib/aiorehom at the pinned version (uv sync --locked)."""
+    lock = tomllib.loads((ROOT / "uv.lock").read_text("utf-8"))
+    (package,) = [package for package in lock["package"] if package["name"] == "aiorehom"]
+    assert package["version"] == _pinned_version()
+    assert package["source"] == {"editable": "lib/aiorehom"}
 
 
 def test_discovery_matchers() -> None:
@@ -139,6 +166,6 @@ async def test_loader_accepts_manifest(hass: HomeAssistant) -> None:
     assert integration.config_flow
     assert integration.iot_class == "local_push"
     assert integration.integration_type == "hub"
-    assert integration.requirements == ["aiorehom==0.2.0"]
-    assert str(integration.version) == "0.1.0"
+    assert integration.requirements == ["aiorehom==0.3.0"]
+    assert str(integration.version) == "0.2.0b1"
     assert integration.dependencies == []

@@ -1,14 +1,17 @@
-"""Read-only enforcement at runtime.
+"""Control off (the default): read-only at runtime.
 
-Every Home Assistant control action on every Rehom entity that supports it is
-called with valid arguments (so Home Assistant's own validation passes) and
-must raise ``ServiceValidationError(rehom, control_disabled)`` without touching
-the client: the replay device's transport log and the client's connection
-state are unchanged, and so is the entity's state.
+An entry without "Enable control" builds a read-only client.  Every Home
+Assistant control action on every Rehom entity that supports it is called with
+valid arguments (so Home Assistant's own validation passes) and must raise
+``ServiceValidationError(rehom, control_disabled)`` without touching the
+client: no write reaches the replay device, its transport log and the client's
+connection state are unchanged, and so is the entity's state.  Turning a
+thermostat off is not offered at all (Home Assistant refuses it as not
+supported before the integration is called).
 
-There is no button in this version: Home Assistant records a button press (the entity's
-state) before ``async_press`` could refuse it, so a refused "Reset alarms"
-would still look pressed.  The button arrives with control.
+There is no button: Home Assistant records a button press (the entity's state)
+before ``async_press`` could refuse it, so a refused "Reset alarms" would
+still look pressed.
 """
 
 from __future__ import annotations
@@ -54,7 +57,7 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import ServiceNotSupported, ServiceValidationError
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 import voluptuous as vol
@@ -76,6 +79,13 @@ FAN = "fan.vmc_001"
 SELECT = "select.vmc_001_operating_mode"
 NUMBER = "number.zona_001_temperature_offset"
 SWITCH = "switch.rehom_plant_predictive_algorithm"
+
+#: Actions Home Assistant refuses itself: the thermostats have no "turn off" feature
+#: (the controller cannot switch the house or a zone off from Home Assistant).
+NOT_SUPPORTED = {
+    (CLIMATE_DOMAIN, SERVICE_TURN_OFF, HOUSE_CLIMATE),
+    (CLIMATE_DOMAIN, SERVICE_TURN_OFF, ZONE),
+}
 
 #: (action domain, action, entity id, data): every control action of every platform.
 CONTROL_ACTIONS: list[tuple[str, str, str, dict[str, Any]]] = [
@@ -139,6 +149,7 @@ async def test_control_action_refused(
     """The action raises control_disabled and changes nothing, on the device or in HA."""
     domain, service, entity_id, data = action
     client = harness.client
+    assert harness.allow_writes == [False]  # the entry's client is read-only
     calls = harness.transport_calls
     connection = client.connection_state
     before = get_state(hass, entity_id)
@@ -147,11 +158,15 @@ async def test_control_action_refused(
         await hass.services.async_call(
             domain, service, {ATTR_ENTITY_ID: entity_id, **data}, blocking=True
         )
-    assert err.value.translation_domain == DOMAIN
-    assert err.value.translation_key == "control_disabled"
+    if (domain, service, entity_id) in NOT_SUPPORTED:
+        assert isinstance(err.value, ServiceNotSupported)
+    else:
+        assert err.value.translation_domain == DOMAIN
+        assert err.value.translation_key == "control_disabled"
     await harness.settle()
 
     assert harness.transport_calls == calls
+    assert harness.writes == []
     assert client.connection_state is connection
     assert harness.client is client  # no new client was created either
     after = get_state(hass, entity_id)
@@ -174,7 +189,7 @@ async def test_every_control_platform_covered() -> None:
     }
 
 
-async def test_no_button_in_m3(hass: HomeAssistant, loaded: MockConfigEntry) -> None:
+async def test_no_button(hass: HomeAssistant, loaded: MockConfigEntry) -> None:
     """No button: a refused press would still be recorded as a press by Home Assistant."""
     assert Platform.BUTTON not in PLATFORMS
     assert hass.states.async_all("button") == []

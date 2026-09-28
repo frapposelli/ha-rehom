@@ -4,6 +4,11 @@ The library publishes an immutable ``RehomState`` after every batch of
 WebSocket frames, resync and time-driven rebuild (slot boundaries, override
 expiry, alarm debounce, heartbeat deadline); this coordinator only forwards
 it.  There is no polling (``update_interval=None``) and no I/O here.
+
+Control is confirmed, never optimistic: the library publishes the state that
+confirms a write before its ``set_*`` call returns, and the subscription
+callback below is synchronous, so entity states already show the controller's
+report when a control action returns.
 """
 
 from __future__ import annotations
@@ -12,13 +17,7 @@ from dataclasses import dataclass
 import logging
 from typing import TYPE_CHECKING
 
-from aiorehom import (
-    ConnectionState,
-    RehomClient,
-    RehomNotReadyError,
-    RehomState,
-    StateUpdate,
-)
+from aiorehom import ConnectionState, RehomNotReadyError, RehomState, StateUpdate
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -26,6 +25,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import DOMAIN, EXC_NOT_READY, EXC_UNAVAILABLE
 
 if TYPE_CHECKING:
+    # Types only: the client is built in api.py alone (tests/test_no_writes.py).
+    from aiorehom import RehomClient
+
     from .issues import RehomIssueTracker
 
 _LOGGER = logging.getLogger(__package__)
@@ -39,6 +41,10 @@ class RehomRuntimeData:
     coordinator: RehomCoordinator
     hub_device_id: str  # device registry id of the hub device (for via_device_id)
     issues: RehomIssueTracker
+    #: The client was built with writes allowed ("Enable control" was on at setup).
+    #: Fixed until the entry reloads; ``control.ensure_control_enabled`` also
+    #: checks the option itself at call time.
+    control_enabled: bool = False
 
 
 type RehomConfigEntry = ConfigEntry[RehomRuntimeData]

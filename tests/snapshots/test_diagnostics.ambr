@@ -5838,7 +5838,7 @@
       }),
     }),
     'versions': dict({
-      'aiorehom': '0.2.0',
+      'aiorehom': '0.3.0',
       'board': 'pi',
       'controller': '4.04 R',
       'platform': 'arm32',

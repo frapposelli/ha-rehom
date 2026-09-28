@@ -14,6 +14,12 @@ test checks the entity inventory of the reference plant, then plays every
   state, no event (60-s debounce);
 - no alarm event at the first sync, nor anywhere in the capture;
 - nothing but reads reached the device.
+
+A second run has "Enable control" on: the same entities, one offset change
+through Home Assistant's number action (shown at once, confirmed by the
+controller's echo), then the whole capture; the setpoint-mismatch issue is
+fixable there (the house is at comfort, a verified level), and exactly one
+write reached the device.
 """
 
 from __future__ import annotations
@@ -28,8 +34,14 @@ from homeassistant.components.climate import (
     HVACAction,
     HVACMode,
 )
+from homeassistant.components.number import (
+    ATTR_VALUE,
+    DOMAIN as NUMBER_DOMAIN,
+    SERVICE_SET_VALUE,
+)
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import (
+    ATTR_ENTITY_ID,
     ATTR_TEMPERATURE,
     STATE_OFF,
     STATE_ON,
@@ -50,11 +62,13 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.rehom.const import (
     DOMAIN,
     ISSUE_SETPOINT_MISMATCH,
+    ISSUE_SETPOINT_MISMATCH_FIXABLE,
     PLATFORMS,
 )
 from custom_components.rehom.diagnostics import async_get_config_entry_diagnostics
 from custom_components.rehom.issues import issue_id
 
+from .conftest import CONTROL_OPTIONS
 from .harness import (
     FIXTURE_DIR,
     FIXTURE_MAC,
@@ -70,7 +84,7 @@ from .platform_helpers import StateChanges, get_state, is_available
 #: The last recorded frame is at 10:51:44.8Z; the capture ends at 10:51:58Z.
 AFTER_LAST_FRAME = T("10:51:45")
 
-#: Read-only transport: every method a ReplayTransport records (there is no write method).
+#: Every read method a ReplayTransport records (the harness logs writes as "post_bulk_update").
 READ_CALLS = {
     "login",
     "get_alive",
@@ -433,9 +447,60 @@ async def test_end_to_end_replay(
     assert "is unavailable" not in caplog.text
 
     # read-only: only GETs (and the login) reached the device
+    assert harness.allow_writes == [False]
     assert set(harness.transport_calls) <= READ_CALLS
+    assert harness.writes == []
     for recorder in (*events.values(), *problems.values()):
         recorder.stop()
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+@pytest.mark.usefixtures("init_integration")
+async def test_end_to_end_with_control(
+    hass: HomeAssistant, harness: RehomHarness, mock_config_entry: MockConfigEntry
+) -> None:
+    """Control on: the same entities, one confirmed write, then the whole capture."""
+    entry = mock_config_entry
+    client = harness.client
+    assert harness.allow_writes == [True]
+    _check_inventory(hass, entry, er.async_get(hass), dr.async_get(hass))  # same as control off
+
+    offset = "number.zona_001_temperature_offset"
+    assert get_state(hass, offset).state == "0.0"
+    await hass.services.async_call(
+        NUMBER_DOMAIN,
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: offset, ATTR_VALUE: 1},
+        blocking=True,
+    )
+    # confirmed by the controller's echo before the action returned
+    assert get_state(hass, offset).state == "1.0"
+    assert harness.written_values == [{"ZONA.001..DELTA_SETP_CORRENTE": "1.0"}]
+
+    # the mismatch at comfort can be fixed from Home Assistant (comfort is verified)
+    issue_registry = ir.async_get(hass)
+    mismatch_issue = issue_id(ISSUE_SETPOINT_MISMATCH, entry.entry_id)
+    await harness.advance_to(T("10:28:00"))
+    assert _issues(issue_registry) == {mismatch_issue}
+    issue = issue_registry.async_get_issue(DOMAIN, mismatch_issue)
+    assert issue is not None
+    assert issue.is_fixable
+    assert issue.translation_key == ISSUE_SETPOINT_MISMATCH_FIXABLE
+    await harness.advance_to(T("10:41:12"))
+    assert _issues(issue_registry) == set()
+
+    await harness.advance_to(AFTER_LAST_FRAME)
+    assert harness.driver.delivered == len(harness.device.frames)
+    assert client.connection_state is ConnectionState.CONNECTED
+    assert harness.clients == [client]
+    # zone 001 keeps the offset across the capture: base 24 °C from 10:41:18Z, +1
+    assert get_state(hass, offset).state == "1.0"
+    assert get_state(hass, "climate.zona_001").attributes[ATTR_TEMPERATURE] == 25.0
+    # reads, plus exactly one write
+    calls = harness.transport_calls
+    assert calls.count("post_bulk_update") == 1
+    assert set(calls) - {"post_bulk_update"} <= READ_CALLS
+    assert len(harness.writes) == 1
 
 
 @pytest.mark.parametrize(

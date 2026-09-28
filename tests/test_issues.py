@@ -1,4 +1,8 @@
-"""Repair issues, none of them fixable from Home Assistant.
+"""Repair issues: when each one is raised and deleted, and which one is fixable.
+
+Only ``setpoint_mismatch`` can be fixable: with "Enable control" on and the
+house at a level Home Assistant may send (economy or comfort; pre-comfort is
+never sent to the house).  The fix flow itself is tested in ``test_repairs.py``.
 
 Home Assistant's frozen clock and the library's virtual clock read the same
 instant (``tests/harness.py``), so the 5- and 15-minute grace rules run on the
@@ -7,9 +11,11 @@ replayed timeline.
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import timedelta
+from typing import Any
 
-from aiorehom import RehomConnectionError, RehomResponseError
+from aiorehom import MasterPreset, RehomConnectionError, RehomResponseError
 from aiorehom.replay import ReplayData
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -22,11 +28,20 @@ from custom_components.rehom.const import (
     ISSUE_INSTALLER_SESSION_ACTIVE,
     ISSUE_SEASON_MISMATCH,
     ISSUE_SETPOINT_MISMATCH,
+    ISSUE_SETPOINT_MISMATCH_FIXABLE,
     ISSUE_UNSUPPORTED_API,
 )
-from custom_components.rehom.issues import issue_id
+from custom_components.rehom.issues import issue_id, setpoint_fix_preset
 
-from .harness import FIXTURE_START, RehomHarness, T, bus_update
+from .conftest import CONTROL_OPTIONS
+from .harness import FIXTURE_START, RehomHarness, T, bus_update, set_values, termo_update
+
+#: The house MANUAL at economy (29 °C) while the controller regulates to 26 °C.
+ECO_MISMATCH = set_values({"REHOM...SET_POINT": "1"})
+#: The pre-comfort temperature 25 °C (26 °C in the capture, the regulated setpoint).
+PRE_COMFORT_25 = {"REHOM...TEMP_PRE": "25"}
+#: The house MANUAL at pre-comfort (25 °C) while the controller regulates to 26 °C.
+PRE_COMFORT_MISMATCH = set_values({**PRE_COMFORT_25, "REHOM...SET_POINT": "2"})
 
 
 @pytest.fixture
@@ -82,7 +97,8 @@ async def test_setpoint_mismatch(
     assert issue.translation_key == ISSUE_SETPOINT_MISMATCH
     assert issue.translation_placeholders == {"setpoint": "26", "level_temperature": "24"}
     assert issue.severity is ir.IssueSeverity.WARNING
-    assert not issue.is_fixable
+    assert not issue.is_fixable  # "Enable control" is off
+    assert issue.data is None
     assert not issue.is_persistent
     assert _keys(issue_registry, entry) == {ISSUE_SETPOINT_MISMATCH}
 
@@ -95,6 +111,144 @@ async def test_setpoint_mismatch(
 
     await harness.advance(120)  # stays deleted
     assert _keys(issue_registry, entry) == set()
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+@pytest.mark.parametrize("device_patch", [ECO_MISMATCH])
+async def test_setpoint_mismatch_fixable(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    harness: RehomHarness,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """Control on and the house at economy: the issue offers the fix (for this entry)."""
+    entry = init_integration
+    await harness.advance_to(T("10:28:00"))
+    issue = _issue(issue_registry, entry, ISSUE_SETPOINT_MISMATCH)
+    assert issue is not None
+    assert issue.is_fixable
+    assert issue.data == {"entry_id": entry.entry_id}
+    # same issue id; the fixable texts (a fix flow instead of a description)
+    assert issue.translation_key == ISSUE_SETPOINT_MISMATCH_FIXABLE
+    assert issue.translation_placeholders == {"setpoint": "26", "level_temperature": "29"}
+    assert harness.writes == []  # raising the issue sends nothing
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+async def test_setpoint_mismatch_comfort_fixable(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    harness: RehomHarness,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """The capture itself: comfort (24 °C) regulating to 26 °C, and comfort may be sent."""
+    entry = init_integration
+    await harness.advance_to(T("10:28:00"))
+    issue = _issue(issue_registry, entry, ISSUE_SETPOINT_MISMATCH)
+    assert issue is not None
+    assert issue.is_fixable
+    assert issue.data == {"entry_id": entry.entry_id}
+    assert issue.translation_key == ISSUE_SETPOINT_MISMATCH_FIXABLE
+    assert issue.translation_placeholders == {"setpoint": "26", "level_temperature": "24"}
+    assert harness.writes == []
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+@pytest.mark.parametrize("device_patch", [PRE_COMFORT_MISMATCH])
+async def test_setpoint_mismatch_pre_comfort_not_fixable(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    harness: RehomHarness,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """Control on, but pre-comfort is never sent to the house: no fix offered."""
+    await harness.advance_to(T("10:28:00"))
+    issue = _issue(issue_registry, init_integration, ISSUE_SETPOINT_MISMATCH)
+    assert issue is not None
+    assert not issue.is_fixable
+    assert issue.data is None
+    assert issue.translation_key == ISSUE_SETPOINT_MISMATCH
+    assert issue.translation_placeholders == {"setpoint": "26", "level_temperature": "25"}
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+@pytest.mark.parametrize("device_patch", [ECO_MISMATCH])
+async def test_setpoint_mismatch_runtime_flag_off(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    harness: RehomHarness,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """The option is on but the running client cannot write: no fix offered."""
+    init_integration.runtime_data.control_enabled = False
+    await harness.advance_to(T("10:28:00"))
+    issue = _issue(issue_registry, init_integration, ISSUE_SETPOINT_MISMATCH)
+    assert issue is not None
+    assert not issue.is_fixable
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+@pytest.mark.parametrize(
+    "device_patch",
+    [
+        set_values(
+            PRE_COMFORT_25,
+            extra_frames=[
+                (T("10:29:00"), termo_update("REHOM...SET_POINT", "1")),
+                (T("10:31:00"), termo_update("REHOM...SET_POINT", "2")),
+                (T("10:33:00"), termo_update("REHOM...SET_POINT", "3")),
+            ],
+        )
+    ],
+)
+async def test_setpoint_mismatch_fixable_follows_the_level(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    harness: RehomHarness,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """Re-judged on every update: comfort, economy (fix), pre-comfort (no fix), comfort (fix)."""
+    entry = init_integration
+    fixable: list[tuple[bool, str, str | None]] = []
+    for when in ("10:28:00", "10:29:05", "10:31:05", "10:33:05"):
+        await harness.advance_to(T(when))
+        issue = _issue(issue_registry, entry, ISSUE_SETPOINT_MISMATCH)
+        assert issue is not None
+        placeholders = issue.translation_placeholders or {}
+        fixable.append(
+            (issue.is_fixable, issue.translation_key, placeholders.get("level_temperature"))
+        )
+    assert fixable == [
+        (True, ISSUE_SETPOINT_MISMATCH_FIXABLE, "24"),
+        (True, ISSUE_SETPOINT_MISMATCH_FIXABLE, "29"),
+        (False, ISSUE_SETPOINT_MISMATCH, "25"),
+        (True, ISSUE_SETPOINT_MISMATCH_FIXABLE, "24"),
+    ]
+    assert harness.writes == []
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+@pytest.mark.parametrize(
+    ("preset", "fix"),
+    [
+        (MasterPreset.ECONOMY, MasterPreset.ECONOMY),
+        (MasterPreset.COMFORT, MasterPreset.COMFORT),
+        (MasterPreset.PRE_COMFORT, None),  # a level, but never sent to the house
+        (MasterPreset.AUTO, None),  # AUTO has no setpoint of its own
+        (MasterPreset.OFF, None),
+        (None, None),
+    ],
+)
+async def test_setpoint_fix_preset(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    preset: MasterPreset | None,
+    fix: MasterPreset | None,
+) -> None:
+    """Only a MANUAL level that may be sent (control.VERIFIED_VALUES) can be re-sent."""
+    plant = init_integration.runtime_data.coordinator.data.plant
+    other: Any = dataclasses.replace(plant, preset=preset)
+    assert setpoint_fix_preset(init_integration, other) is fix
 
 
 @pytest.mark.parametrize(

@@ -9,7 +9,11 @@ Complements ``test_translations.py``:
   with every state value an entity can report (enum options, select options,
   presets, event types), and nothing is translated that no code declares;
 - every ``translation_key`` literal in the code (exceptions, issues, devices,
-  entities) exists in all three files;
+  entities) exists in all three files, with the placeholders the code passes;
+  the only computed exception keys (control.py, a library refusal raised as a
+  ``HomeAssistantError`` for a device refusal or a ``ServiceValidationError``
+  otherwise) are always ``REFUSAL_KEYS`` values;
+- the setpoint repair's fix flow (repairs.py) has its steps and abort reasons;
 - Home Assistant's own translation loader reads both languages with the same keys,
   and every exception message resolves;
 - every icon belongs to a declared translation key and every action has an icon.
@@ -35,7 +39,7 @@ from homeassistant.helpers.entity import EntityDescription
 from homeassistant.util.yaml import load_yaml_dict
 import pytest
 
-from custom_components.rehom import const
+from custom_components.rehom import const, issues as rehom_issues
 from custom_components.rehom.const import DOMAIN, PLATFORMS
 from custom_components.rehom.entity import RehomEntity
 
@@ -52,6 +56,20 @@ EXCEPTION_CALLS = {
     "ConfigEntryNotReady",
     "UpdateFailed",
 }
+#: The only module that may compute an exception translation_key: control.py maps a
+#: library refusal reason through ``REFUSAL_KEYS`` (two calls: a device refusal is a
+#: HomeAssistantError, any other a ServiceValidationError).
+DYNAMIC_EXCEPTION_MODULE = "control"
+DYNAMIC_EXCEPTION_CALLS = 2
+#: Sub-keys of every issue text; a fixable one has a fix flow (repairs.py) instead of a
+#: description (Home Assistant's schema allows one or the other).
+ISSUE_KEYS = {"title", "description"}
+FIXABLE_ISSUE_KEYS = {"title", "fix_flow"}
+#: The fix flow's steps (and their texts) and abort reasons: ``not_fixed`` (nothing was
+#: sent) and ``not_confirmed`` (sent but not confirmed: it may have been applied).
+FIX_FLOW_STEPS: dict[str, set[str]] = {"confirm": {"title", "description"}}
+FIX_FLOW_ABORTS: set[str] = {"not_fixed", "not_confirmed"}
+FIXABLE_ISSUES = {const.ISSUE_SETPOINT_MISMATCH_FIXABLE}
 
 
 def _load(name: str) -> dict[str, Any]:
@@ -297,12 +315,19 @@ def test_code_translation_keys_exist() -> None:
     uses = list(_code_translation_keys())
     categories = {category for _module, category, _key, _line in uses}
     assert {"exceptions", "device", "entity.sensor", "entity.climate"} <= categories
+    dynamic_exceptions: list[str] = []
     for module, category, key, line in uses:
         where = f"{module}.py:{line}"
         assert not category.startswith("unknown"), f"{where}: {category}"
         if category == "issues":
             # issues.py creates issues from ISSUE_* constants only (checked below)
             assert module == "issues", where
+            continue
+        if key is None and category == "exceptions":
+            # a library refusal: every value it can take is checked in
+            # test_refusal_keys_exist_everywhere
+            assert module == DYNAMIC_EXCEPTION_MODULE, f"{where}: dynamic exception key"
+            dynamic_exceptions.append(where)
             continue
         if key is None:
             # computed keys: only entity descriptions, all covered by DECLARED above
@@ -316,6 +341,94 @@ def test_code_translation_keys_exist() -> None:
                     assert key in tree["entity"][platform], f"{name} {where}: {key}"
             else:
                 assert key in tree[category], f"{name} {where}: {category}.{key}"
+    assert len(dynamic_exceptions) == DYNAMIC_EXCEPTION_CALLS, dynamic_exceptions
+
+
+def test_refusal_keys_exist_everywhere() -> None:
+    """Each key the computed exception key can take is an EXC_* key without placeholders."""
+    exceptions = {v for k, v in vars(const).items() if k.startswith("EXC_")}
+    keys = set(const.REFUSAL_KEYS.values())
+    assert keys <= exceptions
+    # the device refusals are REFUSAL_KEYS reasons too (raised as HomeAssistantError)
+    assert set(const.DEVICE_REFUSALS) <= set(const.REFUSAL_KEYS)
+    for name, tree in LANGUAGES.items():
+        for key in keys:
+            # the computed call passes no placeholders
+            assert not PLACEHOLDER.findall(tree["exceptions"][key]["message"]), f"{name}: {key}"
+
+
+def _placeholder_keys(call: ast.Call) -> set[str] | None:
+    """The keys of ``translation_placeholders={...}``; empty if absent, None if computed."""
+    for keyword in call.keywords:
+        if keyword.arg == "translation_placeholders":
+            if not isinstance(keyword.value, ast.Dict):
+                return None
+            keys: set[str] = set()
+            for item in keyword.value.keys:
+                if not (isinstance(item, ast.Constant) and isinstance(item.value, str)):
+                    return None
+                keys.add(item.value)
+            return keys
+    return set()
+
+
+def test_exception_placeholders_match_code() -> None:
+    """Every translated exception gets exactly the placeholders its message uses."""
+    checked: set[str] = set()
+    for path in sorted(COMPONENT.glob("*.py")):
+        module = importlib.import_module(f"custom_components.rehom.{path.stem}")
+        for node in ast.walk(ast.parse(path.read_text("utf-8"))):
+            if not (isinstance(node, ast.Call) and _call_name(node) in EXCEPTION_CALLS):
+                continue
+            key_node = next((kw.value for kw in node.keywords if kw.arg == "translation_key"), None)
+            if key_node is None:
+                continue
+            key = _resolve(key_node, module)
+            passed = _placeholder_keys(node)
+            where = f"{path.stem}.py:{node.lineno}"
+            assert passed is not None, f"{where}: computed placeholders"
+            if key is None:  # the refusal call in control.py (see above)
+                assert passed == set(), where
+                continue
+            checked.add(key)
+            for name, tree in LANGUAGES.items():
+                message = tree["exceptions"][key]["message"]
+                assert set(PLACEHOLDER.findall(message)) == passed, f"{name} {where}: {key}"
+    # the scan saw the three keys with placeholders
+    assert {
+        const.EXC_CANNOT_CONNECT,
+        const.EXC_WRITE_REFUSED,
+        const.EXC_TARGET_OUT_OF_RANGE,
+    } <= checked
+
+
+def test_fix_flow_translated() -> None:
+    """The setpoint repair's confirm step and abort reasons, in all three files.
+
+    Once repairs.py exists, every ``step_id`` and abort ``reason`` it uses is one of them.
+    """
+    for name, tree in LANGUAGES.items():
+        for key in FIXABLE_ISSUES:
+            fix_flow = tree["issues"][key]["fix_flow"]
+            assert {section: set(values) for section, values in fix_flow.items()} == {
+                "step": set(FIX_FLOW_STEPS),
+                "abort": FIX_FLOW_ABORTS,
+            }, f"{name}: {key}"
+            for step, texts in FIX_FLOW_STEPS.items():
+                assert set(fix_flow["step"][step]) == texts, f"{name}: {key}.{step}"
+    repairs = COMPONENT / "repairs.py"
+    if not repairs.exists():
+        return
+    module = importlib.import_module("custom_components.rehom.repairs")
+    for node in ast.walk(ast.parse(repairs.read_text("utf-8"))):
+        if not isinstance(node, ast.Call):
+            continue
+        for keyword in node.keywords:
+            where = f"repairs.py:{node.lineno}"
+            if keyword.arg == "step_id":
+                assert _resolve(keyword.value, module) in FIX_FLOW_STEPS, where
+            elif keyword.arg == "reason":
+                assert _resolve(keyword.value, module) in FIX_FLOW_ABORTS, where
 
 
 def test_issue_keys_are_constants() -> None:
@@ -332,8 +445,14 @@ def test_issue_keys_are_constants() -> None:
             key = next(kw.value for kw in node.keywords if kw.arg == "translation_key")
             assert isinstance(key, ast.Name), ast.unparse(node)
             used.add(key.id)
-    assert used - {"key"} <= issue_constants
+    assert used - {"key", "translation_key"} <= issue_constants
     assert {"ISSUE_SETPOINT_MISMATCH", "ISSUE_UNSUPPORTED_API"} <= used
+    # _set's computed translation_key: the issue key, or its fixable variant
+    values = {getattr(const, name) for name in issue_constants}
+    assert dict(rehom_issues.FIXABLE_TRANSLATION_KEYS) == {
+        const.ISSUE_SETPOINT_MISMATCH: const.ISSUE_SETPOINT_MISMATCH_FIXABLE
+    }
+    assert set(rehom_issues.FIXABLE_TRANSLATION_KEYS.values()) == FIXABLE_ISSUES <= values
 
 
 def test_constant_keys_exist() -> None:
@@ -346,7 +465,8 @@ def test_constant_keys_exist() -> None:
         for key in exceptions:
             assert set(tree["exceptions"][key]) == {"message"}, f"{name}: {key}"
         for key in issues:
-            assert set(tree["issues"][key]) == {"title", "description"}, f"{name}: {key}"
+            keys = FIXABLE_ISSUE_KEYS if key in FIXABLE_ISSUES else ISSUE_KEYS
+            assert set(tree["issues"][key]) == keys, f"{name}: {key}"
 
 
 # -- Home Assistant's loader --------------------------------------------------------------

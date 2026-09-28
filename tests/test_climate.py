@@ -19,7 +19,7 @@ from homeassistant.components.climate import (
 )
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_TEMPERATURE, STATE_UNKNOWN, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry, snapshot_platform
@@ -72,7 +72,8 @@ async def test_timeline(
     """House and zones on the recorded timeline (one replay: 10:22:06.8 -> 10:41:35)."""
     house = get_state(hass, HOUSE_CLIMATE)
     assert house.state == HVACMode.COOL
-    assert house.attributes[ATTR_HVAC_MODES] == [HVACMode.OFF, HVACMode.AUTO, HVACMode.COOL]
+    # "off" cannot be selected: it is listed only while the thermostat is off
+    assert house.attributes[ATTR_HVAC_MODES] == [HVACMode.AUTO, HVACMode.COOL]
     assert house.attributes[ATTR_PRESET_MODES] == ["none", "eco", "pre_comfort", "comfort"]
     assert house.attributes[ATTR_PRESET_MODE] == "comfort"
     assert house.attributes[ATTR_TEMPERATURE] == 24.0
@@ -86,6 +87,7 @@ async def test_timeline(
     for zone in FIXTURE_ZONES:
         state = get_state(hass, ZONE_CLIMATE.format(zone=zone))
         assert state.state == HVACMode.COOL
+        assert state.attributes[ATTR_HVAC_MODES] == [HVACMode.AUTO, HVACMode.COOL]
         assert state.attributes[ATTR_PRESET_MODE] == "comfort"
         assert state.attributes[ATTR_PRESET_MODES] == [
             "none",
@@ -149,15 +151,21 @@ async def test_timeline(
 async def test_house_off(
     hass: HomeAssistant, harness: RehomHarness, init_integration: MockConfigEntry
 ) -> None:
-    """MODO 0: house and zones off, preset none, no target."""
+    """MODO 0: house and zones off, preset none, no target; "off" listed while off."""
+    assert get_state(hass, HOUSE_CLIMATE).attributes[ATTR_HVAC_MODES] == [
+        HVACMode.AUTO,
+        HVACMode.COOL,
+    ]
     await harness.advance_to(T("10:23:05"))
     house = get_state(hass, HOUSE_CLIMATE)
     assert house.state == HVACMode.OFF
+    assert house.attributes[ATTR_HVAC_MODES] == [HVACMode.OFF, HVACMode.AUTO, HVACMode.COOL]
     assert house.attributes[ATTR_PRESET_MODE] == "none"
     assert house.attributes[ATTR_HVAC_ACTION] == HVACAction.OFF
     assert house.attributes[ATTR_TEMPERATURE] is None
     zone = get_state(hass, "climate.zona_001")
     assert zone.state == HVACMode.OFF
+    assert zone.attributes[ATTR_HVAC_MODES] == [HVACMode.OFF, HVACMode.AUTO, HVACMode.COOL]
     assert zone.attributes[ATTR_PRESET_MODE] == "none"
 
 
@@ -224,7 +232,7 @@ async def test_winter(
     await harness.advance_to(T("10:23:05"))
     house = get_state(hass, HOUSE_CLIMATE)
     assert house.state == HVACMode.HEAT
-    assert house.attributes[ATTR_HVAC_MODES] == [HVACMode.OFF, HVACMode.AUTO, HVACMode.HEAT]
+    assert house.attributes[ATTR_HVAC_MODES] == [HVACMode.AUTO, HVACMode.HEAT]
     assert house.attributes[ATTR_MIN_TEMP] == 16.0
     assert house.attributes[ATTR_MAX_TEMP] == 28.5
     assert get_state(hass, "climate.zona_001").state == HVACMode.HEAT
@@ -240,7 +248,7 @@ async def test_unknown_season(
     await harness.advance_to(T("10:23:05"))
     house = get_state(hass, HOUSE_CLIMATE)
     assert house.state == STATE_UNKNOWN
-    assert house.attributes[ATTR_HVAC_MODES] == [HVACMode.OFF, HVACMode.AUTO]
+    assert house.attributes[ATTR_HVAC_MODES] == [HVACMode.AUTO]
     assert house.attributes[ATTR_MIN_TEMP] == 16.0
     assert house.attributes[ATTR_MAX_TEMP] == 35.5
     assert get_state(hass, "climate.zona_001").state == STATE_UNKNOWN
@@ -268,8 +276,11 @@ async def test_absent_zone(
     assert entity.min_temp == 7
     assert entity.max_temp == 35
     assert entity.extra_state_attributes == {"controller_setpoint": None}
-    with pytest.raises(ServiceValidationError) as err:
+    with pytest.raises(HomeAssistantError) as err:
         await entity.async_get_schedule()
+    # the zone is gone from the controller's state: not a usage error
+    assert not isinstance(err.value, ServiceValidationError)
+    assert err.value.translation_domain == DOMAIN
     assert err.value.translation_key == "not_ready"
 
 

@@ -1,6 +1,13 @@
-"""The Rehom integration (read-only in this version)."""
+"""The Rehom integration.
+
+The client is read-only unless the entry's "Enable control" option is on
+(changing an option reloads the entry, which rebuilds the client).  Every
+control action goes through ``control.py``.
+"""
 
 from __future__ import annotations
+
+import logging
 
 from aiorehom import (
     DeviceKind,
@@ -21,6 +28,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from . import api
 from .const import (
+    CONF_ENABLE_CONTROL,
     DOMAIN,
     EXC_CANNOT_CONNECT,
     EXC_INVALID_AUTH,
@@ -40,6 +48,8 @@ from .issues import (
 )
 from .services import async_setup_services
 
+_LOGGER = logging.getLogger(__name__)
+
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
@@ -50,8 +60,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: RehomConfigEntry) -> bool:
-    """Connect, register the hub device and forward the platforms."""
-    client = api.create_client(hass, entry.data)
+    """Connect, register the hub device and forward the platforms.
+
+    Writes are allowed only when the "Enable control" option is exactly
+    ``True``; the flag is read once here and fixed until the next reload.
+    """
+    client = api.create_client(
+        hass, entry.data, allow_writes=entry.options.get(CONF_ENABLE_CONTROL) is True
+    )
     host = entry.data[CONF_HOST]
     try:
         await client.connect()
@@ -106,9 +122,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: RehomConfigEntry) -> boo
         configuration_url=f"http://{host}:{entry.data[CONF_PORT]}/www/",
     )
     issues = RehomIssueTracker(hass, entry, coordinator)
+    control_enabled = client.allow_writes
     entry.runtime_data = RehomRuntimeData(
-        client=client, coordinator=coordinator, hub_device_id=hub.id, issues=issues
+        client=client,
+        coordinator=coordinator,
+        hub_device_id=hub.id,
+        issues=issues,
+        control_enabled=control_enabled,
     )
+    if control_enabled:
+        _LOGGER.info(
+            "Control is enabled: Home Assistant can change settings on the Rehom controller"
+        )
     issues.async_start()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

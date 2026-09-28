@@ -4,9 +4,11 @@ An **unofficial** [HACS](https://hacs.xyz/) integration for **Rehom / Radiax** r
 
 This project is not affiliated with, endorsed by or supported by Rehom S.r.l. See the [disclaimer](#disclaimer).
 
-## Status: read-only preview
+## Status: preview, control is opt-in
 
-This version **only reads** the controller. Home Assistant shows the house, its zones and its VMCs, but cannot change anything: every control action (thermostat mode, preset or temperature, fan speed, VMC mode, zone offset, switches) is refused with the error "Control from Home Assistant is disabled". The integration contains no code that writes to the controller. Control will come in a later version, and it will be opt-in.
+Home Assistant shows the house, its zones and its VMCs. It changes settings on the controller **only if you turn on Enable control** in the integration options. Control is off by default: until you turn it on, every control action (thermostat mode, preset or temperature, fan speed, VMC mode, zone offset, switches) is refused with the error "Control from Home Assistant is off", and no change is ever sent to the controller.
+
+With control on, Home Assistant sends only the settings that have been tested on a real controller, and refuses the others. See [Control](#control).
 
 ## Requirements
 
@@ -55,7 +57,8 @@ The integration connects once to check the address and the credentials, then ide
 
 | Option | Meaning |
 |---|---|
-| Default temporary comfort duration | Hours of comfort (0.5 to 24, in steps of 0.5) that **Set temporary comfort** uses when no duration is given. While control is disabled it has no effect. |
+| Enable control | Off by default. When on, Home Assistant can change the settings listed under [Control](#control). Take a Home Assistant backup before you turn it on. |
+| Default temporary comfort duration | Hours of comfort (0.5 to 24, in steps of 0.5) that **Set temporary comfort** uses when no duration is given. Temporary comfort is not available yet, so this option has no effect for now. |
 
 Changing the options reloads the integration.
 
@@ -79,10 +82,69 @@ Notes:
 - The house thermostat's target is the temperature of the selected level (economy, pre-comfort or comfort). Its `controller_setpoint` attribute and the **Controller setpoint** sensor show what the plant really regulates to.
 - The house thermostat's current temperature is the temperature of zone 001 (the web app's "T IN"). It is unknown while that zone's probe is offline. The house's heating/cooling action and the **Demand** sensor ignore zones whose probe is offline.
 - When a zone probe or a VMC stops responding, all of its entities become unavailable except its connection sensor, which turns off. While the controller's serial line to the plant is down, every zone and VMC entity is unavailable.
-- A zone's target is its base temperature plus its whole-degree offset. Zone thermostats use steps of 1 °C. The **Temperature offset** is a temperature difference: if you choose °F in its entity settings, +1 °C shows as +1.8 °F.
+- A zone's target is its base temperature plus its whole-degree offset (see [Zone temperatures](#zone-temperatures)). Zone thermostats use steps of 1 °C. The **Temperature offset** is a temperature difference: if you choose °F in its entity settings, +1 °C shows as +1.8 °F.
 - Zone and VMC devices are not assigned to areas automatically. Assign them yourself.
 - **Alarm events** have the event types `raised` and `cleared`. Their data holds `alarm_id`, `source`, `unit`, `code`, `text` and `first_seen`. They fire only for changes after Home Assistant started, never for alarms that were already active. `cleared` fires 60 seconds after the alarm ends (see [Known limitations](#known-limitations)).
 - The integration is translated into English and Italian.
+
+## Control
+
+Control is **off by default**. While it is off, Home Assistant only reads the controller: every control action, whether it comes from a dashboard, an automation, a script or a voice assistant, is refused with "Control from Home Assistant is off", and nothing is sent.
+
+### Turning control on
+
+1. Take a Home Assistant backup.
+2. Go to **Settings → Devices & services → Rehom** and select **Configure** on the entry.
+3. Turn on **Enable control** and select **Submit**. The integration reloads.
+
+Turn it off the same way. The [diagnostics](#diagnostics) show whether it is on.
+
+When control is on, anyone and anything that can use the Rehom entities in Home Assistant (users, automations, scripts, voice assistants) can change the plant. Decide which entities you expose to voice assistants before you turn it on.
+
+### What you can change
+
+Home Assistant sends only settings that have been tested on a real Rehom controller:
+
+| Entity | What you can do |
+|---|---|
+| House thermostat | Mode **Auto**, and turning it on when it is off (it goes to Auto). Presets **Economy** and **Comfort**. **Heat** or **Cool** (the mode of the current season) selects the last manual level again: Comfort if none has been seen. Preset **None** goes back to Auto; while the thermostat is off, it does nothing. While it is off, choosing Economy, Comfort, Heat or Cool switches it on at that level. |
+| Zone thermostat | The target temperature (see [Zone temperatures](#zone-temperatures)). Back to the schedule (mode **Auto**, preset **None**, or turn on), presets **Economy**, **Pre-comfort** and **Comfort**, and **Heat** or **Cool** (the last manual level again): all of them need the house in Auto. Preset **None** does nothing while the zone is off (a zone switched off at its room probe refuses it, see [What is refused](#what-is-refused)). |
+| Temperature offset (zone) | −3 to +3 °C, in whole degrees. A half degree rounds up, as on the zone thermostat. |
+| Ventilation (fan) | Speeds 50 %, 75 % and 100 %. Turning it on when it is stopped or in standby selects the operating mode it last ran in since Home Assistant started (or the integration was reloaded). Otherwise it selects Dehumidification, or Ventilation if Dehumidification is not available. If the mode it last ran in is one that Home Assistant does not send, turning it on is refused. |
+| Operating mode (VMC) | Dehumidification and Ventilation. |
+| Predictive algorithm | On and off. Needs the house in Auto. |
+
+### What is refused
+
+- **Not tested yet**, refused with "Home Assistant does not send this setting yet":
+  - the house's **Pre-comfort** preset. **Heat** and **Cool** on the house select the last manual level again, so they are refused when that level is Pre-comfort;
+  - the house thermostat's target temperature (the comfort temperature);
+  - the fan speed 25 %, turning the ventilation off, and VMCs whose fan speed is continuous;
+  - the VMC operating modes other than Dehumidification and Ventilation;
+  - any change to the mode or preset of a **zone that was switched off at its room probe** (its **Control source** sensor shows Probe). Home Assistant does not turn such a zone back on: turn on, toggle, mode Auto, Heat or Cool, and every preset (None included) are refused, and nothing is sent. Turn it back on at the probe or in the official app. This applies only to those zones: turning on the house thermostat when it is off, a zone that was switched off in the official app, or the ventilation when it is stopped or in standby still works.
+- **Not possible from Home Assistant**, refused with "Home Assistant cannot do this on the Rehom controller": turning the house or a zone **off**, and the **Free cooling** switch. The rapid VMC modes are not offered.
+- **Not available yet**: the **Temporary comfort** preset and the two temporary comfort [actions](#actions).
+- **Never changed** from Home Assistant: the season, the schedules, fancoils and home automation devices. Use the official Rehom app for them.
+
+The controller has its own rules, and Home Assistant reports them as errors. Nothing can be changed while the crono panel controls the plant, while the controller is in read-only mode or while its serial line is down. Zone modes and the predictive algorithm need the house in Auto. A zone's mode cannot change while its setpoint is forced or a temporary comfort runs. The fan speed is fixed in the Stop, Standby and rapid modes. A VMC operating mode, and fan speed control, must have been enabled by the installer.
+
+Home Assistant reports a refusal caused by the request or by the plant's settings as an invalid action, and a refusal caused by the device as a device error: the controller's serial line to the plant is down, a zone probe or a VMC is not responding, or a VMC is in an error state or a forced mode. In both cases nothing is sent.
+
+### How changes are applied
+
+- Home Assistant sends each change once and waits until the controller reports it. The entity shows the new value only then: it never shows a value the controller has not confirmed.
+- A change usually takes a second or two. While **Live updates** is off, Home Assistant has to read the whole state to confirm a change, so an action can take from about 20 seconds to about 3 minutes.
+- Changes are sent one at a time, in the order they were made; a change waits for the ones before it. Stopping the automation or script that made a change does not undo it: once sent, it may still be applied.
+- If the controller does not confirm a change, the action fails with "the controller did not confirm it". The change may still have been applied: the entity shows what the controller reports. If sending fails, for example because of a connection error, the action fails with "It may or may not have been applied".
+- Setting a value that the controller already reports sends nothing.
+
+### Zone temperatures
+
+A zone's target is its base temperature (the temperature of its current level) plus its **temperature offset**, in whole degrees from −3 to +3 °C. Setting a zone thermostat's target changes the offset: Home Assistant rounds the difference from the base temperature to whole degrees, and a half degree rounds up (base + 0.5 °C gives +1). You can also set the offset directly with the zone's **Temperature offset** entity, in any house mode. It rounds the same way.
+
+An action that sets both the mode and the target of a zone (`climate.set_temperature` with `hvac_mode`) applies the mode first, and only if it differs from the current one. A new mode can change the base temperature. If the target is then more than 3 °C from the new base, it is refused with "The target temperature of this zone must be between … °C and … °C": the target is not changed, but the mode change stays applied. A target that is not a number is refused with "The requested value is not a valid number", and nothing is sent.
+
+The offset **stays** when the schedule moves to another slot or level. For example, +1 °C set during a comfort slot also raises the next economy slot by 1 °C. Set it back to 0 to follow the schedule's temperatures again. A zone without a target (its level or that level's temperature is unknown) cannot be set.
 
 ## Actions
 
@@ -123,7 +185,7 @@ A level is `off`, `economy`, `pre_comfort`, `comfort` or `null` for an invalid s
 
 ### `rehom.set_temporary_comfort` and `rehom.clear_temporary_comfort`
 
-These keep a zone at comfort for a number of hours, and end that. The optional `duration` must be 0.5 to 24 hours in steps of 0.5. **In this version both actions are refused** (control is disabled). They exist so that automations can be written now.
+These keep a zone at comfort for a number of hours, and end that. The optional `duration` must be 0.5 to 24 hours in steps of 0.5. **They are not available yet, and both are always refused**: with control off, with "Control from Home Assistant is off"; with control on, with "Temporary comfort is not available from Home Assistant yet" (on the house thermostat, with "This action is only available for zone thermostats"). They exist so that automations can be written now.
 
 ## How data is updated
 
@@ -131,18 +193,18 @@ The integration uses **local push**. The controller streams changes over a WebSo
 
 ## Repairs
 
-The integration may raise these repair issues. None of them can be fixed from Home Assistant. The minutes count only while the controller answers.
+The integration may raise these repair issues. Only the first can be fixed from Home Assistant, and only when control is on. The minutes count only while the controller answers.
 
 | Issue | When |
 |---|---|
-| The Rehom plant regulates to a different temperature | The house is in manual mode, and for more than 5 minutes the controller setpoint has differed from the selected level's temperature. To fix it, raise the level's temperature by 0.1 °C in the official app, then lower it again. |
+| The Rehom plant regulates to a different temperature | The house is in manual mode, and for more than 5 minutes the controller setpoint has differed from the selected level's temperature. With **Enable control** on, and when the selected level can be set from Home Assistant (Economy or Comfort, see [What you can change](#what-you-can-change)), open the issue and confirm: Home Assistant selects the same level again, which rewrites the controller setpoint. If the controller does not confirm it, the fix may still have been applied, and the issue then closes by itself. Otherwise, raise the level's temperature by 0.1 °C in the official app, then lower it again. |
 | An installer session is open | The controller has reported an open installer session for more than 15 minutes. |
 | The Rehom season settings disagree | For more than 15 minutes, the running season has differed from the installer configuration. |
 | Unsupported Rehom server version | The controller answers in a format this integration does not understand, for example after a firmware update. If this happens at startup, the integration is not set up: reload it after updating the integration. |
 
 ## Diagnostics
 
-Open **Settings → Devices & services → Rehom**, then the entry's **⋮** menu, and select **Download diagnostics**. The file contains the redacted state model, the connection counters and the software versions. The MAC address, names, serial numbers, the host and the credentials are removed. Check the file before you share it.
+Open **Settings → Devices & services → Rehom**, then the entry's **⋮** menu, and select **Download diagnostics**. The file contains the integration options (including whether control is on), the redacted state model, the connection counters and the software versions. The MAC address, names, serial numbers, the host and the credentials are removed. Check the file before you share it.
 
 ## Troubleshooting
 
@@ -159,11 +221,20 @@ Open **Settings → Devices & services → Rehom**, then the entry's **⋮** men
 - **Failed to connect**: check that Home Assistant can reach `http://<host>:8000/` and that no firewall rule blocks it. If `rehomserver.local` does not resolve on your network, use the controller's IP address, preferably a DHCP reservation.
 - **Invalid username or password**: use an end-user account of the Rehom app, not the installer's.
 - **Entities unavailable**: the controller is not answering, or a zone probe or VMC is offline (its connection sensor is off).
+- **"Control from Home Assistant is off"**: turn on **Enable control** in the integration options (see [Control](#control)).
+- **"Home Assistant does not send this setting yet"**: that value has not been tested on a Rehom controller. Use the official app for it. A zone that was switched off at its room probe gets this error too (see [What is refused](#what-is-refused)).
+- **"The target temperature of this zone must be between …"** or **"The requested value is not a valid number"**: see [Zone temperatures](#zone-temperatures).
+- **"The controller did not confirm it"** or **"It may or may not have been applied"**: check the entity, which shows what the controller reports, and the **Live updates** sensor before you try again.
+- Other refusals name their reason, for example the crono panel or a house that is not in Auto.
 - When you open an issue, attach the diagnostics file and the debug log, after checking that they contain nothing you do not want to share.
 
 ## Known limitations
 
-- **Read-only**: no control, no schedule edits, no season changes.
+- **Control is opt-in and limited** to the settings listed under [What you can change](#what-you-can-change). The schedules, the season, temporary comfort, turning the house or a zone off, and the house's comfort temperature cannot be changed from Home Assistant, and a zone that was switched off at its room probe is not turned back on.
+- **A zone switched off at its room probe** is recognised from the last state Home Assistant received. If the probe switches a zone off at the very moment a mode change for it is sent, that change can still put the zone back on its schedule.
+- **The ventilation remembers its last operating mode only until Home Assistant restarts** or the integration reloads (see [What you can change](#what-you-can-change)).
+- **Changes can be slow while Live updates is off**: an action can take up to about 3 minutes, and later changes wait for it.
+- **A zone's offset stays** across schedule slots and levels until you change it (see [Zone temperatures](#zone-temperatures)).
 - A zone's heating/cooling action comes from the zone's call signal. It can lag a setpoint change by about 30 seconds, and a zone above its target does not always call.
 - **Alarms are debounced for 60 seconds, in both directions.** A flag that clears within a minute never turns on an alarm sensor and never fires an event. Once an alarm is on, it turns off (and fires `cleared`) only after it has been gone for 60 seconds.
 - If a zone or VMC disappears from the controller, its entities become unavailable. They are not removed automatically, but you can delete the device by hand.
@@ -184,7 +255,7 @@ The controller's local interface uses plain HTTP and WebSocket, without encrypti
 - **Never expose** the controller's ports (8000 and 1337) to the internet, for example with router port forwarding. For remote access, use Home Assistant's own remote access or a VPN.
 - Use a dedicated end-user account for Home Assistant where your installation allows it, with a long, unique password. Never use the installer's account.
 
-The integration stores the credentials in Home Assistant's configuration, uses them only to log in to the controller, and removes them from diagnostics.
+The integration stores the credentials in Home Assistant's configuration, uses them only to log in to the controller, and removes them from diagnostics. With **Enable control** on, it sends changes with the same account.
 
 ## Development
 

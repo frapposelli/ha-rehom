@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connessione al server Rehom",
-        "description": "Inserisci l'indirizzo del server Rehom e le credenziali che usi nell'app Rehom. Questa versione legge soltanto l'impianto: il controllo da Home Assistant è disabilitato.",
+        "description": "Inserisci l'indirizzo del server Rehom e le credenziali che usi nell'app Rehom. Il controllo da Home Assistant parte disattivato: puoi attivarlo in seguito nelle opzioni dell'integrazione.",
         "data": {
           "host": "Host",
           "port": "Porta",
@@ -74,12 +74,14 @@
     "step": {
       "init": {
         "title": "Opzioni Rehom",
-        "description": "In questa versione il controllo da Home Assistant è disabilitato: ogni azione di controllo viene rifiutata.",
+        "description": "Il controllo da Home Assistant resta disattivato finché non attivi Abilita controllo. Il salvataggio delle opzioni ricarica l'integrazione.",
         "data": {
+          "enable_control": "Abilita controllo",
           "temporary_comfort_duration": "Durata predefinita del comfort temporaneo"
         },
         "data_description": {
-          "temporary_comfort_duration": "Ore di comfort usate dall'azione Imposta comfort temporaneo quando non viene indicata una durata (da 0,5 a 24)."
+          "enable_control": "Permette a Home Assistant di modificare l'impianto: modalità della casa e delle zone, temperature delle zone, ventilazione e algoritmo predittivo. Le modifiche vengono inviate al controller, quindi prima di attivarlo fai un backup di Home Assistant. Disattivato per impostazione predefinita.",
+          "temporary_comfort_duration": "Ore di comfort usate dall'azione Imposta comfort temporaneo quando non viene indicata una durata (da 0,5 a 24). Questa azione non è ancora disponibile."
         }
       }
     }
@@ -356,17 +358,68 @@
     }
   },
   "exceptions": {
+    "bus_down": {
+      "message": "Il controller Rehom ha perso la linea seriale verso l'impianto, quindi ora non è possibile modificare nulla."
+    },
     "cannot_connect": {
       "message": "Impossibile connettersi al server Rehom all'indirizzo {host}."
     },
     "control_disabled": {
-      "message": "Il controllo da Home Assistant è disabilitato: questa versione dell'integrazione Rehom è in sola lettura."
+      "message": "Il controllo da Home Assistant è disattivato. Per usarlo, attiva Abilita controllo nelle opzioni dell'integrazione Rehom."
+    },
+    "crono_mode": {
+      "message": "L'impianto è controllato dal cronotermostato, quindi Home Assistant non può modificarlo. Il sensore Controllato da indica chi ha il controllo."
+    },
+    "fan_locked_by_mode": {
+      "message": "La velocità del ventilatore di questa VMC non può essere modificata nella sua modalità di funzionamento attuale (stop, standby o una modalità rapida)."
+    },
+    "fan_not_writable": {
+      "message": "La velocità del ventilatore di questa VMC non può essere modificata: l'installatore non l'ha abilitata."
+    },
+    "house_not_auto": {
+      "message": "Questa operazione richiede la casa in modalità automatica: imposta prima su automatico il termostato della casa."
     },
     "invalid_auth": {
       "message": "Il server Rehom ha rifiutato il nome utente o la password."
     },
+    "invalid_value": {
+      "message": "Il valore richiesto non è un numero valido, quindi al controller Rehom non è stato inviato nulla."
+    },
+    "level_temperature_invalid": {
+      "message": "La temperatura di quel livello è sconosciuta o fuori intervallo sul controller, quindi non è possibile impostare la casa su quel livello."
+    },
+    "mode_not_available": {
+      "message": "Questa modalità di funzionamento non è disponibile su questa VMC: l'installatore non l'ha abilitata."
+    },
+    "no_active_target": {
+      "message": "Questa zona al momento non ha una temperatura obiettivo, quindi non è possibile impostarla."
+    },
     "not_ready": {
       "message": "Il server Rehom non è ancora stato letto."
+    },
+    "not_supported": {
+      "message": "Home Assistant non può farlo sul controller Rehom. Usa l'app ufficiale Rehom."
+    },
+    "not_verified": {
+      "message": "Home Assistant non invia ancora questa impostazione: non è stata provata su un controller Rehom. Usa l'app ufficiale Rehom."
+    },
+    "read_only": {
+      "message": "Il controller Rehom è in modalità sola lettura, quindi da Home Assistant non è possibile modificare nulla."
+    },
+    "season_unknown": {
+      "message": "Il controller non ha comunicato la stagione, quindi ora non è possibile impostare questo valore."
+    },
+    "setpoint_forced": {
+      "message": "Il setpoint di questa zona è forzato sul controller, quindi la sua modalità non può essere modificata."
+    },
+    "target_out_of_range": {
+      "message": "Nella modalità attuale, la temperatura obiettivo di questa zona deve essere compresa tra {min} °C e {max} °C, quindi non è stata modificata. Un cambio di modalità richiesto nella stessa azione è stato applicato."
+    },
+    "temporary_comfort_active": {
+      "message": "In questa zona è attivo un comfort temporaneo, quindi la sua modalità non può essere modificata finché non termina."
+    },
+    "temporary_comfort_unavailable": {
+      "message": "Il comfort temporaneo non è ancora disponibile da Home Assistant. Usa l'app ufficiale Rehom."
     },
     "unavailable": {
       "message": "Il server Rehom non risponde."
@@ -374,8 +427,26 @@
     "unsupported_api": {
       "message": "Il server Rehom risponde in un formato che questa integrazione non riconosce."
     },
+    "vmc_busy": {
+      "message": "Questa VMC è in errore o in una modalità forzata, quindi ora non può essere modificata."
+    },
+    "vmc_offline": {
+      "message": "Questa VMC non risponde, quindi ora non può essere modificata."
+    },
+    "write_failed": {
+      "message": "L'invio della modifica al controller Rehom non è riuscito. Potrebbe essere stata applicata oppure no: l'entità mostra ciò che riporta il controller."
+    },
+    "write_not_confirmed": {
+      "message": "La modifica è stata inviata al controller Rehom, ma il controller non l'ha confermata. Potrebbe essere stata applicata: l'entità mostra ciò che riporta il controller."
+    },
+    "write_refused": {
+      "message": "La modifica è stata rifiutata e al controller Rehom non è stato inviato nulla (motivo: {reason})."
+    },
     "wrong_device": {
       "message": "L'indirizzo configurato risponde con un server Rehom diverso."
+    },
+    "zone_offline": {
+      "message": "La sonda di questa zona non risponde, quindi ora la zona non può essere modificata."
     },
     "zone_only": {
       "message": "Questa azione è disponibile solo per i termostati di zona."
@@ -392,7 +463,22 @@
     },
     "setpoint_mismatch": {
       "title": "L'impianto Rehom regola a una temperatura diversa",
-      "description": "La casa è in modalità manuale, ma da più di 5 minuti il controller regola a {setpoint} °C invece dei {level_temperature} °C del livello selezionato. L'app web Rehom può lasciare questo setpoint non aggiornato. Per correggerlo, nell'app ufficiale Rehom alza di 0,1 °C la temperatura del livello selezionato e poi riabbassala: così il setpoint del controller viene riscritto."
+      "description": "La casa è in modalità manuale, ma da più di 5 minuti il controller regola a {setpoint} °C invece dei {level_temperature} °C del livello selezionato. L'app web Rehom può lasciare questo setpoint non aggiornato. Per correggerlo, nell'app ufficiale Rehom alza di 0,1 °C la temperatura del livello selezionato e poi riabbassala: così il setpoint del controller viene riscritto. Con Abilita controllo attivo, Home Assistant propone di correggerlo da sé per i livelli che può impostare."
+    },
+    "setpoint_mismatch_fixable": {
+      "title": "L'impianto Rehom regola a una temperatura diversa",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Correggi il setpoint del controller",
+            "description": "La casa è in modalità manuale, ma il controller regola a {setpoint} °C invece dei {level_temperature} °C del livello selezionato. Home Assistant selezionerà di nuovo lo stesso livello: così il setpoint del controller viene riscritto con la temperatura di quel livello. Nient'altro cambia."
+          }
+        },
+        "abort": {
+          "not_fixed": "Home Assistant non è riuscito a correggere il setpoint e al controller non è stato inviato nulla. Il controllo potrebbe essere disattivato, il livello della casa potrebbe essere cambiato, oppure ora il controller non può accettare la modifica. Ricontrolla il problema più tardi, oppure nell'app ufficiale Rehom alza di 0,1 °C la temperatura del livello selezionato e poi riabbassala.",
+          "not_confirmed": "Home Assistant ha inviato di nuovo il livello al controller, ma il controller non l'ha confermato. Potrebbe essere stato applicato: se ora il controller regola alla temperatura del livello, questo problema si chiude da solo. Altrimenti ricontrolla il problema più tardi, oppure nell'app ufficiale Rehom alza di 0,1 °C la temperatura del livello selezionato e poi riabbassala."
+        }
+      }
     },
     "unsupported_api": {
       "title": "Versione del server Rehom non supportata",
@@ -406,7 +492,7 @@
   "services": {
     "clear_temporary_comfort": {
       "name": "Annulla comfort temporaneo",
-      "description": "Termina il comfort temporaneo di una zona. In questa versione dell'integrazione il controllo è disabilitato, quindi questa azione viene rifiutata."
+      "description": "Termina il comfort temporaneo di una zona. Non ancora disponibile: questa azione viene rifiutata."
     },
     "get_schedule": {
       "name": "Leggi programma",
@@ -414,7 +500,7 @@
     },
     "set_temporary_comfort": {
       "name": "Imposta comfort temporaneo",
-      "description": "Mantiene una zona in comfort per un certo numero di ore. In questa versione dell'integrazione il controllo è disabilitato, quindi questa azione viene rifiutata.",
+      "description": "Mantiene una zona in comfort per un certo numero di ore. Non ancora disponibile: questa azione viene rifiutata.",
       "fields": {
         "duration": {
           "name": "Durata",

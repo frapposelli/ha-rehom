@@ -36,9 +36,13 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 import voluptuous as vol
 
-from custom_components.rehom.const import CONF_TEMPORARY_COMFORT_DURATION, DOMAIN
+from custom_components.rehom.const import (
+    CONF_ENABLE_CONTROL,
+    CONF_TEMPORARY_COMFORT_DURATION,
+    DOMAIN,
+)
 
-from .conftest import ENTRY_DATA
+from .conftest import CONTROL_OPTIONS, ENTRY_DATA
 from .harness import FIXTURE_MAC, RehomHarness
 
 DISCOVERED_IP = "192.0.2.10"
@@ -133,9 +137,10 @@ async def test_user_flow(
     assert result["data"] == ENTRY_DATA
     assert isinstance(result["data"][CONF_PORT], int)
     assert result["result"].unique_id == FIXTURE_MAC
-    assert result["result"].options == {}
+    assert result["result"].options == {}  # control off until the user turns it on
     _assert_all_closed(harness)
     assert harness.client_data[-1] == ENTRY_DATA
+    assert harness.allow_writes == [False]  # the probe is read-only
     await hass.async_block_till_done()
     assert len(mock_setup_entry.mock_calls) == 1
 
@@ -657,12 +662,15 @@ async def test_reconfigure_unsupported_api(
 async def test_options_flow(
     hass: HomeAssistant, init_integration: MockConfigEntry, harness: RehomHarness
 ) -> None:
-    """The form shows the current duration; saving a change reloads the entry."""
+    """The form shows the current values; saving a change reloads the entry."""
     entry = init_integration
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "init"
-    assert _defaults(result) == {CONF_TEMPORARY_COMFORT_DURATION: 2.0}
+    assert _defaults(result) == {
+        CONF_ENABLE_CONTROL: False,
+        CONF_TEMPORARY_COMFORT_DURATION: 2.0,
+    }
 
     clients = len(harness.clients)
     result = await hass.config_entries.options.async_configure(
@@ -670,19 +678,100 @@ async def test_options_flow(
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
-    assert entry.options == {CONF_TEMPORARY_COMFORT_DURATION: 3.5}
+    # "Enable control" left alone stays off
+    assert entry.options == {CONF_ENABLE_CONTROL: False, CONF_TEMPORARY_COMFORT_DURATION: 3.5}
     assert entry.state is ConfigEntryState.LOADED
     assert len(harness.clients) == clients + 1  # reloaded
+    assert harness.allow_writes == [False, False]
+    assert entry.runtime_data.control_enabled is False
 
 
 async def test_options_flow_default(hass: HomeAssistant, harness: RehomHarness) -> None:
-    """An entry without options shows the default duration."""
+    """An entry without options (an older entry) shows control off and the default duration."""
     entry = _add_entry(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert _defaults(result) == {CONF_TEMPORARY_COMFORT_DURATION: 2.0}
+    assert _defaults(result) == {
+        CONF_ENABLE_CONTROL: False,
+        CONF_TEMPORARY_COMFORT_DURATION: 2.0,
+    }
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {CONF_TEMPORARY_COMFORT_DURATION: 24}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {CONF_TEMPORARY_COMFORT_DURATION: 24.0}
+    assert entry.options == {CONF_ENABLE_CONTROL: False, CONF_TEMPORARY_COMFORT_DURATION: 24.0}
     await hass.async_block_till_done()
+
+
+async def test_options_flow_not_a_bool(hass: HomeAssistant, harness: RehomHarness) -> None:
+    """A stored value that is not exactly True shows as off (and does not enable control)."""
+    entry = _add_entry(hass)
+    hass.config_entries.async_update_entry(entry, options={CONF_ENABLE_CONTROL: "true"})
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert _defaults(result)[CONF_ENABLE_CONTROL] is False
+
+
+async def test_options_toggle_control(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    harness: RehomHarness,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Turning control on rebuilds the client with writes; turning it off, without."""
+    entry = init_integration
+    assert harness.allow_writes == [False]
+    assert harness.client.allow_writes is False
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_ENABLE_CONTROL: True, CONF_TEMPORARY_COMFORT_DURATION: 2.0}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options == CONTROL_OPTIONS
+    assert entry.state is ConfigEntryState.LOADED
+    assert harness.allow_writes == [False, True]  # reloaded with writes
+    assert harness.client.allow_writes is True
+    assert harness.clients[0].connection_state is ConnectionState.CLOSED
+    assert entry.runtime_data.client is harness.client
+    assert entry.runtime_data.control_enabled is True
+    assert "Control is enabled" in caplog.text
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert _defaults(result) == {
+        CONF_ENABLE_CONTROL: True,
+        CONF_TEMPORARY_COMFORT_DURATION: 2.0,
+    }
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_ENABLE_CONTROL: False, CONF_TEMPORARY_COMFORT_DURATION: 2.0}
+    )
+    await hass.async_block_till_done()
+    assert entry.options[CONF_ENABLE_CONTROL] is False
+    assert harness.allow_writes == [False, True, False]
+    assert harness.client.allow_writes is False
+    assert entry.runtime_data.control_enabled is False
+    assert "post_bulk_update" not in harness.transport_calls
+
+
+@pytest.mark.parametrize("entry_options", [CONTROL_OPTIONS])
+async def test_probes_stay_read_only(
+    hass: HomeAssistant, init_integration: MockConfigEntry, harness: RehomHarness
+) -> None:
+    """With control on, only the entry's client may write: reauth and reconfigure probes never."""
+    entry = init_integration
+    assert harness.allow_writes == [True]
+
+    result = await entry.start_reauth_flow(hass)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], CREDENTIALS)
+    assert result["reason"] == "reauth_successful"
+    await hass.async_block_till_done()
+    assert harness.allow_writes == [True, False, True]  # entry, probe, reloaded entry
+
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_HOST: "rehomserver.local", CONF_PORT: 8000}
+    )
+    assert result["reason"] == "reconfigure_successful"
+    await hass.async_block_till_done()
+    assert harness.allow_writes == [True, False, True, False, True]
+    assert entry.runtime_data.control_enabled is True
+    assert "post_bulk_update" not in harness.transport_calls
