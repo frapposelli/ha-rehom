@@ -4,7 +4,7 @@ An **unofficial** [HACS](https://hacs.xyz/) integration for **Rehom / Radiax** r
 
 This project is not affiliated with, endorsed by or supported by Rehom S.r.l. See the [disclaimer](#disclaimer).
 
-## Status: preview, control is opt-in
+## Status: control is opt-in
 
 Home Assistant shows the house, its zones and its VMCs. It changes settings on the controller **only if you turn on Enable control** in the integration options. Control is off by default: until you turn it on, every control action (thermostat mode, preset or temperature, fan speed, VMC mode, zone offset, switches) is refused with the error "Control from Home Assistant is off", and no change is ever sent to the controller.
 
