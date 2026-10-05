@@ -11,7 +11,7 @@ rules:
   common-modules: done  # coordinator.py, entity.py
   config-flow-test-coverage: done  # tests/test_config_flow.py, 100 % of config_flow.py
   config-flow: done
-  dependency-transparency: todo  # aiorehom must be published on PyPI before the HACS release
+  dependency-transparency: done  # aiorehom on PyPI (MIT), published from tagged GitHub releases by CI (Trusted Publishing)
   docs-actions: done  # README: Actions, Control
   docs-high-level-description: done  # README
   docs-installation-instructions: done  # README: Installation (HACS custom repository)

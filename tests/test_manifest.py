@@ -45,8 +45,7 @@ def test_manifest_keys_and_values() -> None:
         "issue_tracker": "https://github.com/frapposelli/ha-rehom/issues",
         "loggers": ["aiorehom"],
         "requirements": ["aiorehom==0.3.0"],
-        # a beta, released on GitHub as a pre-release (HACS shows it with beta versions on)
-        "version": "0.2.0b1",
+        "version": "0.2.0",
         "zeroconf": [{"type": "_http._tcp.local.", "name": "rehom*"}],
     }
 
@@ -167,5 +166,5 @@ async def test_loader_accepts_manifest(hass: HomeAssistant) -> None:
     assert integration.iot_class == "local_push"
     assert integration.integration_type == "hub"
     assert integration.requirements == ["aiorehom==0.3.0"]
-    assert str(integration.version) == "0.2.0b1"
+    assert str(integration.version) == "0.2.0"
     assert integration.dependencies == []
